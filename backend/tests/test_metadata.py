@@ -335,3 +335,599 @@ def test_telegram_fallback_stops_at_shared_deadline(client, monkeypatch):
     response = client.post("/api/v1/metadata", json={"url": "https://t.me/finds/123"})
     assert response.status_code == 200
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("kind", ["p", "reel", "reels", "tv"])
+def test_instagram_share_preview_url(kind):
+    from src.integrations.product_metadata.sources import instagram_post_url
+
+    expected = "reel" if kind == "reels" else kind
+    assert instagram_post_url(f"https://instagram.com/{kind}/Abc_123-/?igsh=tracking") == (
+        f"https://www.instagram.com/{expected}/Abc_123-/"
+    )
+    for url in [
+        "https://instagram.com.evil.test/p/abc/", "https://user:pass@instagram.com/p/abc/",
+        "https://instagram.com:8443/p/abc/", "https://instagram.com/accounts/login/",
+        "https://instagram.com/stories/name/123/", "https://instagram.com/name/",
+    ]:
+        assert instagram_post_url(url) is None
+
+
+@pytest.mark.parametrize("failure", ["http", "login", "empty", "photo"])
+def test_instagram_422_falls_back_to_public_embed(client, monkeypatch, failure):
+    import io
+
+    from PIL import Image
+
+    from src.integrations.product_metadata import routes
+
+    image = io.BytesIO()
+    Image.new("RGB", (20, 30), "blue").save(image, "PNG")
+    calls = []
+
+    def fetch(url, max_bytes, timeout):
+        calls.append(url)
+        assert 0 < timeout <= 8
+        if url == "https://www.instagram.com/p/Abc/":
+            if failure == "http":
+                raise FetchError("Сайт не предоставил данные")
+            if failure == "login":
+                return b'<meta property="og:image" content="https://cdn.example/avatar.jpg">', "text/html", "https://www.instagram.com/accounts/login/"
+            if failure == "photo":
+                return b'<meta property="og:image" content="https://cdn.example/expired.jpg">', "text/html", url
+            return b"<title>Instagram</title>", "text/html", url
+        if url == "https://cdn.example/expired.jpg":
+            raise FetchError("Фото недоступно")
+        if url.endswith("/embed/captioned/"):
+            return (
+                b'<img class="Avatar" src="https://cdn.example/avatar.jpg">'
+                b'<div class="Caption">A nice find</div>'
+                b'<img class="EmbeddedMediaImage" src="https://cdn.example/post.jpg">',
+                "text/html", url,
+            )
+        assert url == "https://cdn.example/post.jpg"
+        return image.getvalue(), "image/png", url
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://instagram.com/p/Abc/?igsh=track"})
+    assert response.status_code == 200
+    assert response.json()["title"] == "A nice find"
+    assert response.json()["image_id"]
+    assert response.json()["description"] is None
+    assert "https://cdn.example/avatar.jpg" not in calls
+    assert client.get(f"/api/v1/media/{response.json()['image_id']}").status_code == 200
+
+
+def test_instagram_unavailable_returns_hint_not_422_and_link_can_be_saved(client, monkeypatch):
+    from src.config import get_settings
+    from src.integrations.product_metadata import routes
+
+    def failed(*args):
+        raise FetchError("Сайт не предоставил данные")
+
+    monkeypatch.setattr(routes, "fetch_public", failed)
+    url = "https://www.instagram.com/reel/Abc/?igsh=track"
+    response = client.post("/api/v1/metadata", json={"url": url})
+    assert response.status_code == 200
+    assert response.json()["image_id"] is None
+    assert response.json()["title"] is None
+    assert "Сайт не предоставил фото" in response.json()["warning"]
+    assert client.post("/api/v1/items", json={
+        "recipient_id": get_settings().dev_user_id, "list_type": "wishlist",
+        "item_type": "gift", "url": url,
+    }).status_code == 201
+
+
+def test_instagram_does_not_import_other_post_after_redirect(client, monkeypatch):
+    from src.integrations.product_metadata import routes
+
+    def fetch(url, *args):
+        if url.endswith("favicon.ico"):
+            raise FetchError("No icon")
+        return b'<meta property="og:title" content="Wrong"><meta property="og:image" content="/wrong.jpg">', "text/html", "https://www.instagram.com/p/Other/"
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    data = client.post("/api/v1/metadata", json={"url": "https://www.instagram.com/p/Abc/"}).json()
+    assert data["title"] is None
+    assert data["image_id"] is None
+
+
+def test_instagram_image_keeps_ssrf_validation(client, monkeypatch):
+    from src.integrations.product_metadata import routes
+
+    original = routes.fetch_public
+
+    def fetch(url, *args):
+        if url.startswith("https://www.instagram.com/"):
+            return b'<meta property="og:title" content="Find"><meta property="og:image" content="http://127.0.0.1/private">', "text/html", url
+        return original(url, *args)
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    data = client.post("/api/v1/metadata", json={"url": "https://www.instagram.com/p/Abc/"}).json()
+    assert data["title"] == "Find"
+    assert data["image_id"] is None
+
+
+def test_instagram_fallback_stops_at_deadline(client, monkeypatch):
+    from src.integrations.product_metadata import routes
+
+    clock = [0]
+    calls = []
+    monkeypatch.setattr(routes.time, "monotonic", lambda: clock[0])
+
+    def fetch(url, *args):
+        calls.append(url)
+        clock[0] = 17
+        raise FetchError("Timeout")
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://www.instagram.com/p/Abc/"})
+    assert response.status_code == 200
+    assert len(calls) == 1
+
+
+def test_open_graph_title_is_case_insensitive_and_ignores_empty_duplicates():
+    data = parse_metadata(b'''<title>Fallback</title>
+    <meta name="OG:TITLE" content="A useful title"><meta property="og:title" content=" ">
+    <script type="application/ld+json">{"@type":"Product","name":"Internal name"}</script>''', "https://shop.example")
+    assert data["title"] == "Internal name"
+    fallback = parse_metadata(b'<meta name="OG:TITLE" content="A useful title">'
+                              b'<meta property="og:title" content=" ">', "https://shop.example")
+    assert fallback["title"] == "A useful title"
+
+
+def test_explicit_logos_then_icons_not_arbitrary_images():
+    from src.integrations.product_metadata.parser import parse_logos
+
+    html = b'''<script type="application/ld+json">{"@graph":[{"@type":"Organization",
+    "logo":{"@type":"ImageObject","url":"/brand.png"}}]}</script>
+    <img src="/random.jpg"><img class="site-logo" src="/header.png">
+    <link rel="icon" href="/small.ico"><link rel="apple-touch-icon" href="/touch.png">
+    <img alt="logo" src="data:image/png;base64,foo"><img alt="logo" src="/logo.svg">'''
+    assert parse_logos(html, "https://shop.example/item") == [
+        "https://shop.example/brand.png", "https://shop.example/header.png",
+        "https://shop.example/touch.png", "https://shop.example/small.ico",
+    ]
+
+
+@pytest.mark.parametrize("prefer_logo", [False, True])
+def test_product_photo_or_certificate_logo_priority(client, monkeypatch, prefer_logo):
+    import io
+
+    from PIL import Image
+
+    from src.integrations.product_metadata import routes
+
+    image = io.BytesIO()
+    Image.new("RGBA", (32, 32), (255, 0, 0, 0)).save(image, "PNG")
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url == "https://shop.example/item":
+            return b'''<meta property="og:title" content="Shop item">
+            <meta property="og:image" content="/product.png"><img class="logo" src="/brand.png">''', "text/html", url
+        assert url == ("https://shop.example/brand.png" if prefer_logo else "https://shop.example/product.png")
+        return image.getvalue(), "image/png", url
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    data = client.post("/api/v1/metadata", json={"url": "https://shop.example/item", "prefer_logo": prefer_logo}).json()
+    assert data["image_id"]
+    assert data["image_is_icon"] is prefer_logo
+    assert len(calls) == 2
+    if prefer_logo:
+        assert "логотип" in data["warning"]
+    # Transparent brand images must be flattened onto white, not black.
+    saved = client.get(f"/api/v1/media/{data['image_id']}")
+    with Image.open(io.BytesIO(saved.content)) as clean:
+        assert all(channel > 245 for channel in clean.getpixel((0, 0)))
+    from src.config import get_settings
+
+    created = client.post("/api/v1/items", json={
+        "recipient_id": get_settings().dev_user_id, "list_type": "wishlist", "item_type": "gift",
+        "url": "https://shop.example/item", "image_id": data["image_id"],
+    })
+    assert created.status_code == 201
+    item = created.json()
+    assert item["image_is_icon"] is prefer_logo
+    updated = client.put(f"/api/v1/items/{item['id']}", json={
+        "item_type": "gift", "url": item["url"], "image_id": item["image_id"], "title": "Edited",
+    })
+    assert updated.status_code == 200
+    assert updated.json()["image_is_icon"] is prefer_logo
+
+
+@pytest.mark.parametrize("failure", ["missing", "broken", "page"])
+def test_logo_fallback_from_home_page_and_ico(client, monkeypatch, failure):
+    import io
+
+    from PIL import Image
+
+    from src.integrations.product_metadata import routes
+
+    icon = io.BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(icon, "ICO")
+    calls = []
+
+    def fetch(url, max_bytes, timeout):
+        calls.append(url)
+        assert 0 < timeout <= 8
+        if url == "https://shop.example/item":
+            if failure == "page":
+                raise FetchError("No page")
+            html = b'<meta property="og:title" content="Item">'
+            if failure == "broken":
+                html += b'<meta property="og:image" content="/expired.jpg">'
+            return html, "text/html", url
+        if url.endswith("expired.jpg"):
+            raise FetchError("No photo")
+        if url == "https://shop.example/":
+            return b'<link rel="icon" href="/favicon.ico">', "text/html", url
+        assert url == "https://shop.example/favicon.ico"
+        return icon.getvalue(), "image/x-icon", url
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item", "prefer_logo": True})
+    assert response.status_code == 200
+    assert response.json()["image_id"]
+    assert "логотип" in response.json()["warning"]
+    assert "https://shop.example/" in calls
+
+
+def test_logo_fallback_keeps_ssrf_validation_and_attempt_limits(client, monkeypatch):
+    from src.integrations.product_metadata import routes
+
+    original = routes.fetch_public
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url.startswith("https://shop.example/"):
+            return b'<img class="logo" src="http://127.0.0.1/private"><link rel="icon" href="file:///secret">', "text/html", url
+        return original(url, *args)
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item", "prefer_logo": True})
+    assert response.status_code == 200
+    assert response.json()["image_id"] is None
+    assert len(calls) <= 7
+    assert not any(url.startswith("file:") for url in calls)
+
+
+def test_logo_fallback_respects_shared_deadline(client, monkeypatch):
+    from src.integrations.product_metadata import routes
+
+    clock = [0]
+    monkeypatch.setattr(routes.time, "monotonic", lambda: clock[0])
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        clock[0] = 25
+        return b'<img class="logo" src="/brand.png">', "text/html", url
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item", "prefer_logo": True})
+    assert response.status_code == 200
+    assert response.json()["image_id"] is None
+    assert len(calls) == 1
+
+
+def test_certificate_uses_photo_when_no_logo_is_loadable(client, monkeypatch):
+    import io
+
+    from PIL import Image
+
+    from src.integrations.product_metadata import routes
+
+    image = io.BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(image, "PNG")
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url == "https://shop.example/item":
+            return b'<meta property="og:image" content="/photo.png">', "text/html", url
+        if url.endswith("/photo.png"):
+            return image.getvalue(), "image/png", url
+        raise FetchError("No logo")
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    data = client.post("/api/v1/metadata", json={"url": "https://shop.example/item", "prefer_logo": True}).json()
+    assert data["image_id"]
+    assert data["warning"] is None
+    assert calls[-1] == "https://shop.example/photo.png"
+
+
+@pytest.mark.parametrize("prefer_logo", [False, True])
+def test_public_post_uses_site_icon_only_for_certificates(client, monkeypatch, prefer_logo):
+    import io
+
+    from PIL import Image
+
+    from src.integrations.product_metadata import routes
+
+    image = io.BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(image, "PNG")
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url.endswith("/favicon.ico"):
+            return image.getvalue(), "image/png", url
+        return b'<img class="Avatar" src="https://cdn.example/avatar.png">', "text/html", url
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    data = client.post("/api/v1/metadata", json={"url": "https://www.instagram.com/p/Abc/", "prefer_logo": prefer_logo}).json()
+    assert bool(data["image_id"]) is prefer_logo
+    assert data["image_is_icon"] is prefer_logo
+    assert any(url.endswith("/favicon.ico") for url in calls) is prefer_logo
+    assert not any("avatar.png" in url for url in calls)
+
+
+def test_primary_product_graph_references_and_alternative_images():
+    html = b'''<meta property="og:title" content="Preview title">
+    <meta property="og:image" content="/og.jpg"><meta property="OG:IMAGE" content="/og2.jpg">
+    <meta name="twitter:image" content="/card.jpg"><link rel="image_src" href="/legacy.jpg">
+    <script type="Application/LD+JSON; charset=utf-8">{"@graph":[
+      {"@type":"WebPage","url":"https://shop.example/item","mainEntity":{"@id":"#item"}},
+      {"@id":"#item","@type":["Thing","https://schema.org/Product"],"name":"Real product",
+       "image":[{"@id":"#photo"},"/second.jpg"],"offers":{"@id":"#offer"}},
+      {"@id":"#photo","@type":"ImageObject","contentUrl":"/first.jpg"},
+      {"@id":"#offer","@type":"Offer","priceSpecification":{"price":"0","priceCurrency":"rub"}},
+      {"@type":"Product","name":"Recommendation","image":"/wrong.jpg"}
+    ]}</script>'''
+    data = parse_metadata(html, "https://shop.example/item")
+    assert data["title"] == "Real product"
+    assert data["price"] == "0.00"
+    assert data["currency"] == "RUB"
+    assert data["image_urls"] == [f"https://shop.example/{name}.jpg"
+                                  for name in ("first", "second", "og", "og2", "card", "legacy")]
+
+
+def test_nested_primary_product_does_not_use_recommendations():
+    data = parse_metadata(b'''<script type="application/ld+json">{
+    "@type":"WebPage","mainEntity":{"@type":"Product","name":"Actual product"},
+    "itemListElement":[{"@type":"Product","name":"Recommendation","image":"/wrong.jpg"}]}
+    </script><img src="/banner.jpg">''', "https://shop.example/item")
+    assert data["title"] == "Actual product"
+    assert data["image_urls"] == []
+
+
+def test_product_url_selects_one_product_without_mixing_fields():
+    data = parse_metadata(b'''<meta property="og:image" content="/preview.jpg">
+    <script type="application/ld+json">[
+    {"@id":"#other","@type":"Product","url":"/other","name":"Other","description":"Wrong","image":"/wrong.jpg"},
+    {"@id":"#selected","@type":"Product","url":"/item","name":"Selected"}]</script>''', "https://shop.example/item")
+    assert data["title"] == "Selected"
+    assert data["description"] is None
+    assert data["image_urls"] == ["https://shop.example/preview.jpg"]
+
+
+def test_ambiguous_products_do_not_supply_images_or_prices():
+    data = parse_metadata(b'''<meta property="og:title" content="Collection">
+    <meta property="og:image" content="/preview.jpg"><meta property="product:price:amount" content="7">
+    <meta property="product:price:currency" content="RUB">
+    <script type="application/ld+json">[{"@type":"Product","name":"One","image":"/one.jpg"},
+    {"@type":"Product","name":"Two","image":"/two.jpg"}]</script>
+    <div class="product-gallery"><img src="/random.jpg"></div>''', "https://shop.example/list")
+    assert data["title"] == "Collection"
+    assert data["price"] is None
+    assert data["image_urls"] == ["https://shop.example/preview.jpg"]
+
+
+def test_microdata_product_with_scoped_offer_and_lazy_images():
+    data = parse_metadata(b'''<meta property="og:title" content="Preview">
+    <main><div itemscope itemtype="https://schema.org/Product">
+    <h1 itemprop="name">Product name</h1><p itemprop="description">Details</p>
+    <img itemprop="image" src="data:image/gif;base64,placeholder" data-src="/original.jpg"
+      srcset="/small.jpg 320w, /large.jpg 1200w">
+    <div itemprop="brand" itemscope itemtype="https://schema.org/Brand"><b itemprop="name">Wrong name</b></div>
+    <div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+      <meta itemprop="price" content="2500.50"><meta itemprop="priceCurrency" content="RUB">
+    </div></div></main>''', "https://shop.example/item")
+    assert data["title"] == "Product name"
+    assert data["description"] == "Details"
+    assert data["price"] == "2500.50"
+    assert data["image_urls"] == [f"https://shop.example/{name}.jpg" for name in ("large", "small", "original")]
+
+
+def test_standalone_item_properties_and_product_gallery_fallbacks():
+    data = parse_metadata(b'''<meta itemprop="name" content="Marked product">
+    <meta itemprop="price" content="19.99"><meta itemprop="priceCurrency" content="EUR">
+    <main><h1>Page heading</h1><div data-product-gallery><picture>
+    <source data-srcset="/high.webp 2x, /low.webp 1x"><img data-original="/original.jpg"></picture></div>
+    <div class="recommendations"><img class="product-image" src="/wrong.jpg"></div>
+    <img src="/banner.jpg"></main>''', "https://shop.example/item")
+    assert data["title"] == "Marked product"
+    assert data["price"] == "19.99"
+    assert data["image_urls"] == ["https://shop.example/high.webp", "https://shop.example/low.webp",
+                                  "https://shop.example/original.jpg"]
+
+
+def test_missing_product_fields_use_page_fallbacks():
+    data = parse_metadata(b'''<script type="application/ld+json">{"@type":"Product","name":"Book"}</script>
+    <meta property="product:price:amount" content="42"><meta property="product:price:currency" content="USD">
+    <meta name="twitter:description" content="Preview details"><meta property="og:image:url" content="/photo.jpg">
+    ''', "https://shop.example/item")
+    assert data["title"] == "Book"
+    assert data["description"] == "Preview details"
+    assert data["price"] == "42.00"
+    assert data["image_url"] == "https://shop.example/photo.jpg"
+    assert parse_metadata(b'<main><h1>Product heading</h1></main><meta property="og:title" content="Shop">',
+                          "https://shop.example/item")["title"] == "Product heading"
+
+
+@pytest.mark.parametrize("offers", [
+    '[{"price":"1","priceCurrency":"RUB"},{"price":"2","priceCurrency":"RUB"}]',
+    '{"@type":"AggregateOffer","lowPrice":"1","highPrice":"2","priceCurrency":"RUB"}',
+])
+def test_ambiguous_offer_does_not_fall_back_to_page_price(offers):
+    html = f'''<script type="application/ld+json">{{"@type":"Product","offers":{offers}}}</script>
+    <meta property="product:price:amount" content="1"><meta property="product:price:currency" content="RUB">'''
+    assert parse_metadata(html.encode(), "https://shop.example/item")["price"] is None
+
+
+def test_image_candidates_are_unique_bounded_and_ignore_invalid_urls():
+    import json
+
+    images = ["data:image/png;base64,foo", "file:///secret", "http://[bad", "/logo.svg", "/ok.jpg", "/ok.jpg"]
+    images += [f"/{index}.jpg" for index in range(20)]
+    html = f'<script type="application/ld+json">{json.dumps({"@type": "Product", "image": images})}</script>'
+    data = parse_metadata(html.encode(), "https://shop.example/item")
+    assert len(data["image_urls"]) == 12
+    assert data["image_url"] == "https://shop.example/ok.jpg"
+
+
+@pytest.mark.parametrize("failure", ["network", "invalid-image"])
+def test_image_import_tries_alternatives_before_logo(client, monkeypatch, failure):
+    import io
+
+    from PIL import Image
+
+    from src.integrations.product_metadata import routes
+
+    image = io.BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(image, "PNG")
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url == "https://shop.example/item":
+            return b'''<script type="application/ld+json">{"@type":"Product","name":"Product",
+            "image":["/broken.jpg","/good.jpg"]}</script><img class="logo" src="/brand.png">''', "text/html", url
+        if url.endswith("/broken.jpg"):
+            if failure == "network":
+                raise FetchError("No image")
+            return b"not an image", "image/jpeg", url
+        assert url.endswith("/good.jpg")
+        return image.getvalue(), "image/png", url
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item"})
+    assert response.status_code == 200
+    assert response.json()["image_id"]
+    assert response.json()["warning"] is None
+    assert len(calls) == 3
+
+
+def test_photo_attempts_are_bounded_before_logo(client, monkeypatch):
+    from src.integrations.product_metadata import routes
+
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url == "https://shop.example/item":
+            return b'''<script type="application/ld+json">{"@type":"Product",
+            "image":["/1.jpg","/2.jpg","/3.jpg","/4.jpg","/5.jpg"]}</script>''', "text/html", url
+        raise FetchError("Unavailable")
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item"})
+    assert response.status_code == 200
+    assert response.json()["image_id"] is None
+    assert len([url for url in calls if url.endswith(".jpg")]) == 4
+    assert len(calls) == 5  # Page and photos only: no home page, logo or favicon requests.
+
+
+def test_photo_alternatives_share_deadline(client, monkeypatch):
+    from src.integrations.product_metadata import routes
+
+    clock = [0]
+    calls = []
+    monkeypatch.setattr(routes.time, "monotonic", lambda: clock[0])
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url == "https://shop.example/item":
+            return b'''<script type="application/ld+json">{"@type":"Product",
+            "image":["/first.jpg","/second.jpg"]}</script>''', "text/html", url
+        clock[0] = 25
+        raise FetchError("Timeout")
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item"})
+    assert response.status_code == 200
+    assert calls == ["https://shop.example/item", "https://shop.example/first.jpg"]
+
+
+def test_alternative_images_still_use_ssrf_validation(client, monkeypatch):
+    import io
+
+    from PIL import Image
+
+    from src.integrations.product_metadata import routes
+
+    original = routes.fetch_public
+    image = io.BytesIO()
+    Image.new("RGB", (32, 32), "blue").save(image, "PNG")
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        if url == "https://shop.example/item":
+            return b'''<script type="application/ld+json">{"@type":"Product",
+            "image":["http://127.0.0.1/private.jpg","/safe.jpg"]}</script>''', "text/html", url
+        if url == "https://shop.example/safe.jpg":
+            return image.getvalue(), "image/png", url
+        return original(url, *args)
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item"})
+    assert response.status_code == 200
+    assert response.json()["image_id"]
+    assert calls == ["https://shop.example/item", "http://127.0.0.1/private.jpg", "https://shop.example/safe.jpg"]
+
+
+def test_product_identified_by_main_entity_of_page():
+    data = parse_metadata(b'''<script type="application/ld+json">[
+    {"@type":"Product","name":"Related","image":"/wrong.jpg"},
+    {"@type":"Product","name":"Main","mainEntityOfPage":{"@id":"https://shop.example/item"}}
+    ]</script>''', "https://shop.example/item")
+    assert data["title"] == "Main"
+    assert data["image_urls"] == []
+
+
+def test_explicit_other_product_is_not_imported_as_current_product():
+    data = parse_metadata(b'''<meta property="og:title" content="Current page">
+    <script type="application/ld+json">{"@type":"Product","url":"/other",
+    "name":"Recommendation","image":"/wrong.jpg"}</script>''', "https://shop.example/item")
+    assert data["title"] == "Current page"
+    assert data["image_urls"] == []
+
+
+def test_microdata_image_object():
+    data = parse_metadata(b'''<div itemscope itemtype="https://schema.org/Product">
+    <span itemprop="image" itemscope itemtype="https://schema.org/ImageObject">
+    <meta itemprop="contentUrl" content="/full.jpg"><link itemprop="url" href="/alternate.jpg">
+    </span></div>''', "https://shop.example/item")
+    assert data["image_urls"] == ["https://shop.example/full.jpg", "https://shop.example/alternate.jpg"]
+
+
+@pytest.mark.parametrize("preview", [False, True])
+def test_regular_items_never_fetch_or_store_site_icons(client, db, monkeypatch, preview):
+    from sqlalchemy import func, select
+
+    from src.infrastructure.database import Media
+    from src.integrations.product_metadata import routes
+
+    before = db.scalar(select(func.count()).select_from(Media))
+    calls = []
+
+    def fetch(url, *args):
+        calls.append(url)
+        assert url == "https://shop.example/item"
+        html = b'<title>Product</title><img class="logo" src="/brand.png"><link rel="icon" href="/favicon.ico">'
+        if preview:
+            html += b'<meta property="og:image" content="/brand.png">'
+        return html, "text/html", url
+
+    monkeypatch.setattr(routes, "fetch_public", fetch)
+    response = client.post("/api/v1/metadata", json={"url": "https://shop.example/item"})
+    assert response.status_code == 200
+    assert response.json()["image_id"] is None
+    assert response.json()["image_is_icon"] is False
+    assert "логотип" not in response.json()["warning"]
+    assert calls == ["https://shop.example/item"]
+    assert db.scalar(select(func.count()).select_from(Media)) == before

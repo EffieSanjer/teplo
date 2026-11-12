@@ -5,6 +5,7 @@ from functools import lru_cache
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -82,6 +83,7 @@ class Media(Base):
     storage_key: Mapped[str] = mapped_column(String(100), unique=True)
     mime_type: Mapped[str] = mapped_column(String(50))
     size: Mapped[int] = mapped_column(Integer)
+    is_icon: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     # Once attached, uploader ownership must NEVER bypass the linked-item ACL.

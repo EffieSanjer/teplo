@@ -24,6 +24,21 @@ def preview_url(url: str) -> str:
     return url
 
 
+def instagram_post_url(url: str) -> str | None:
+    parts = urlsplit(url)
+    if (
+        parts.scheme in {"http", "https"}
+        and not parts.username and not parts.password
+        and parts.port in {None, 80 if parts.scheme == "http" else 443}
+        and parts.hostname in {"instagram.com", "www.instagram.com", "m.instagram.com"}
+    ):
+        match = re.fullmatch(r"/(p|reel|reels|tv)/([A-Za-z0-9_-]+)/?", parts.path)
+        if match:
+            kind = "reel" if match[1] == "reels" else match[1]
+            return f"https://www.instagram.com/{kind}/{match[2]}/"
+    return None
+
+
 def telegram_fallback_url(url: str) -> str | None:
     if post := telegram_post(url):
         return f"https://t.me/s/{post[0]}/{post[1]}"

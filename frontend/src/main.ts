@@ -4,6 +4,10 @@ import App from './App.vue'
 import WishlistPage from './features/WishlistPage.vue'
 import FriendsPage from './features/FriendsPage.vue'
 import './style.css'
+import { initTheme } from './shared/theme'
+
+const cleanupTheme = initTheme()
+if (import.meta.hot) import.meta.hot.dispose(cleanupTheme)
 
 export const router = createRouter({
   history: createWebHistory(),

@@ -13,20 +13,23 @@ from src.modules.auth.service import Context
 from src.modules.gifts.service import accessible, missing
 
 
-def store_image(db: Session, owner_id: str, data: bytes, settings: Settings) -> Media:
+def store_image(db: Session, owner_id: str, data: bytes, settings: Settings, *, allow_icon: bool = False) -> Media:
     if len(data) > settings.max_upload_bytes:
         raise HTTPException(413, "Изображение больше допустимого размера")
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(io.BytesIO(data)) as source:
-                if source.format not in {"JPEG", "PNG", "WEBP"}:
+                if source.format not in ({"JPEG", "PNG", "WEBP", "ICO"} if allow_icon else {"JPEG", "PNG", "WEBP"}):
                     raise ValueError()
                 if source.width * source.height > settings.max_image_pixels:
                     raise ValueError()
                 source.verify()
             with Image.open(io.BytesIO(data)) as source:
-                image = ImageOps.exif_transpose(source).convert("RGB")
+                image = ImageOps.exif_transpose(source).convert("RGBA")
+                background = Image.new("RGB", image.size, "white")
+                background.paste(image, mask=image.getchannel("A"))
+                image = background
                 image.thumbnail((2400, 2400))
                 output = io.BytesIO()
                 image.save(output, format="JPEG", quality=88)
@@ -45,7 +48,7 @@ def store_image(db: Session, owner_id: str, data: bytes, settings: Settings) -> 
     key = f"{new_id()}.jpg"
     path = settings.media_root / key
     path.write_bytes(clean)
-    media = Media(storage_key=key, owner_id=owner_id, mime_type="image/jpeg", size=len(clean))
+    media = Media(storage_key=key, owner_id=owner_id, mime_type="image/jpeg", size=len(clean), is_icon=allow_icon)
     try:
         db.add(media)
         db.commit()

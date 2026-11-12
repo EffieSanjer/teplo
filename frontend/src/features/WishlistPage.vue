@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Archive, ArrowLeft, ArrowUpRight, Bookmark, Gift, LockKeyhole, MessageCircle, Plus, RefreshCw, Store } from 'lucide-vue-next'
+import { ArrowLeft, Bookmark, Gift, LockKeyhole, Plus, RefreshCw, Store } from 'lucide-vue-next'
 import { api, itemTitle, send, session, type Item, type User } from '../shared/api'
 import { notify } from '../shared/notifications'
 import ItemCard from './ItemCard.vue'
 import ItemForm from './ItemForm.vue'
 import ItemDetail from './ItemDetail.vue'
 import Modal from '../shared/Modal.vue'
+import MasonryGrid from '../shared/MasonryGrid.vue'
 
 const route = useRoute(), router = useRouter()
 const own = computed(() => !route.params.id || route.params.id === session.value?.user.id)
@@ -21,6 +22,7 @@ const activeItems = computed(() => items.value.filter(i => !i.archived_at))
 const wishes = computed(() => activeItems.value.filter(i => i.item_type !== 'certificate'))
 const certificates = computed(() => activeItems.value.filter(i => i.item_type === 'certificate'))
 const archivedItems = computed(() => items.value.filter(i => i.archived_at))
+const galleryItems = computed(() => [...wishes.value, ...archivedItems.value])
 let generation = 0, lastRefresh = 0
 
 async function load(quiet = false) {
@@ -41,7 +43,11 @@ watch(() => route.fullPath, () => load(), { immediate: true })
 function add() { initialType.value = 'idea'; editing.value = undefined; formOpen.value = true }
 function addCertificate() { initialType.value = 'certificate'; editing.value = undefined; formOpen.value = true }
 function edit(item: Item) { detail.value = undefined; editing.value = item; formOpen.value = true }
-async function saved() { formOpen.value = false; notify('Запись сохранена'); await load(true) }
+async function saved() {
+  formOpen.value = false
+  notify(listType.value === 'surprise' && !editing.value ? 'Сохранено для того самого «это точно твоё»' : 'Запись сохранена')
+  await load(true)
+}
 async function archive(item: Item) {
   try { await send(`/items/${item.id}/archive`, { archived: !item.archived_at }); notify(item.archived_at ? 'Желание снова в списке' : 'Желание перенесено в архив'); await load(true) }
   catch (e) { notify((e as Error).message) }
@@ -69,18 +75,16 @@ onBeforeUnmount(() => { generation++; window.removeEventListener('focus', refres
 <template>
   <div class="page wishlist-page">
     <RouterLink v-if="!own" to="/friends" class="back-link"><ArrowLeft :size="15" />Все друзья</RouterLink>
-    <header class="page-heading"><div><div class="eyebrow"><span class="tiny-dot" />{{ own ? 'ХОРОШИЕ ИДЕИ НЕ ТЕРЯЮТСЯ' : 'УВИДЕЛ — ВСПОМНИЛ' }}</div><h1>{{ own ? 'Мой вишлист' : profile?.display_name || 'Вишлист друга' }}<span class="heading-dot">.</span></h1><p>{{ own ? 'То, что хочется. Чтобы друзья знали.' : 'Запомнить, что хочется другу. И однажды порадовать.' }}</p></div><button v-if="(own || listType === 'surprise') && !error && !loading" class="button primary add-button" @click="add"><Plus :size="18" />{{ listType === 'surprise' ? 'Добавить сюрприз' : 'Добавить желание' }}</button></header>
+    <header class="page-heading"><div class="heading-context"><div class="heading-title"><h1>{{ own ? 'Мой вишлист' : profile?.display_name || 'Вишлист друга' }}</h1><span v-if="!loading && !error" class="count" :aria-label="`Активных записей: ${activeItems.length}`">{{ activeItems.length }}</span></div><p v-if="own" class="page-caption">То, в чём друзья узнают вас.</p></div><button v-if="(own || listType === 'surprise') && !error && !loading" class="button primary add-button" :aria-label="listType === 'surprise' ? 'Добавить сюрприз' : 'Добавить желание'" @click="add"><Plus :size="18" /><span>Добавить</span></button></header>
     <div v-if="!own" class="profile-tabs"><RouterLink :to="`/users/${recipientId}/wishlist`" :class="{ active: listType === 'wishlist' }"><Bookmark :size="17" />Вишлист</RouterLink><RouterLink :to="`/users/${recipientId}/surprises`" :class="{ active: listType === 'surprise' }"><Gift :size="17" />Сюрпризы<LockKeyhole :size="12" /></RouterLink></div>
-    <section v-if="!loading && !error" class="intro-banner" :class="{ 'surprise-banner': listType === 'surprise' }"><div class="banner-icon"><LockKeyhole v-if="listType === 'surprise'" :size="27" :stroke-width="1.7" /><MessageCircle v-else :size="28" :stroke-width="1.7" /></div><div><h2>{{ listType === 'surprise' ? 'Тсс… здесь живут сюрпризы' : own ? 'Я думаю о тебе.' : 'Увидел и вспомнил о тебе' }}</h2><p>{{ listType === 'surprise' ? 'Кажется, тебе понравится. Сохраняйте находки здесь: их увидят друзья, но не получатель.' : own ? 'Иногда это значит: «Запомнил, что ты хотел». Сохраняйте желания — друзьям будет проще вас порадовать.' : 'Можно выбрать что-то из списка или сохранить свою находку в сюрпризы. Её увидят все друзья, кроме получателя.' }}</p></div><ArrowUpRight class="banner-doodle" :size="60" :stroke-width="1.2" aria-hidden="true" /></section>
-    <div v-if="loading" class="loading-grid" aria-label="Загрузка"><div v-for="n in 3" :key="n" class="skeleton" /></div>
+    <div v-if="!loading && !error && !own && listType === 'surprise'" class="list-note"><LockKeyhole :size="16" aria-hidden="true" /><div><p class="surprise-whisper">Тсс… здесь живут сюрпризы для того самого «это точно твоё».</p><p>Видят друзья, но не получатель.</p></div></div>
+    <div v-if="loading" class="loading-grid" aria-label="Загрузка"><div v-for="n in 4" :key="n" class="skeleton" /></div>
     <div v-else-if="error" class="empty-state"><RefreshCw :size="32" /><h2>Не получилось загрузить список</h2><p role="alert">{{ error }}</p><button class="button secondary" @click="load()">Попробовать ещё раз</button></div>
     <template v-else>
-      <div class="section-heading"><h2>{{ listType === 'surprise' ? 'Секретные идеи' : own ? 'Мои желания' : 'Желания друга' }}<span class="count">{{ wishes.length }}</span></h2><span class="section-note">{{ listType === 'surprise' ? 'Только между нами' : 'На заметку друзьям' }}<Bookmark :size="14" /></span></div>
-      <div v-if="!wishes.length" class="empty-state"><Gift :size="38" :stroke-width="1.2" /><h2>{{ archivedItems.length ? 'Все желания пока в архиве' : 'Здесь скоро появится что-то хорошее' }}</h2><p>{{ own ? 'Большая мечта или маленькая радость — начните с первого желания.' : listType === 'surprise' ? 'Станьте автором первого сюрприза. Получатель ничего не узнает.' : 'Ваш друг ещё не добавил пожелания. Загляните чуть позже.' }}</p><button v-if="own || listType === 'surprise'" class="button primary" @click="add"><Plus :size="17" />Добавить {{ listType === 'surprise' ? 'сюрприз' : 'желание' }}</button></div>
-      <div v-else class="cards-grid"><ItemCard v-for="(item, index) in wishes" :key="item.id" :item="item" :index="index" @open="detail = $event" @edit="edit" @archive="archive" @delete="deleting = $event; deleteError = ''" /></div>
-      <section class="certificates-section" aria-labelledby="certificates-heading"><div class="section-heading"><h2 id="certificates-heading"><Store :size="20" />Сертификаты<span class="count">{{ certificates.length }}</span></h2><button v-if="own || listType === 'surprise'" class="text-button" @click="addCertificate"><Plus :size="17" />Добавить магазин</button></div><p class="certificates-intro">{{ own ? 'Магазины, сертификату из которых вы будете рады.' : listType === 'surprise' ? 'Идеи сертификатов в подарок. Получатель этот раздел не видит.' : 'Магазины, в которые можно подарить сертификат.' }}</p><div v-if="certificates.length" class="cards-grid"><ItemCard v-for="(item, index) in certificates" :key="item.id" :item="item" :index="index" @open="detail = $event" @edit="edit" @archive="archive" @delete="deleting = $event; deleteError = ''" /></div><div v-else class="certificate-empty"><Store :size="23" /><p>{{ own || listType === 'surprise' ? 'Добавьте ссылку на магазин — попробуем подгрузить картинку сами.' : 'Друг пока не добавил магазины для сертификатов.' }}</p></div></section>
-      <template v-if="archivedItems.length"><div class="section-heading archive-heading"><h2><Archive :size="17" />Немного истории<span class="count">{{ archivedItems.length }}</span></h2><span class="section-note">Архив желаний</span></div><div class="cards-grid"><ItemCard v-for="(item, index) in archivedItems" :key="item.id" :item="item" :index="index + activeItems.length" @edit="edit" @archive="archive" @delete="deleting = $event; deleteError = ''" /></div></template>
-      <div v-if="own && activeItems.length" class="bottom-tip"><Bookmark :size="27" aria-hidden="true" /><p>Книга, поход в горы или что-то для нового хобби?<br /><strong>Не обязательно искать ссылку. Достаточно идеи.</strong></p><button class="text-button" @click="add">Добавить идею<ArrowUpRight :size="16" /></button></div>
+      <h2 class="visually-hidden">{{ listType === 'surprise' ? 'Секретные идеи' : own ? 'Мои желания' : 'Желания друга' }}</h2>
+      <div v-if="!galleryItems.length && !certificates.length" class="empty-state"><Gift :size="38" :stroke-width="1.2" /><h2>Пока нет желаний</h2><p>{{ own ? 'Добавьте вещь, впечатление или идею.' : listType === 'surprise' ? 'Добавьте первую находку. Получатель её не увидит.' : 'Друг ещё не добавил пожелания.' }}</p><button v-if="own || listType === 'surprise'" class="button primary" @click="add"><Plus :size="17" />Добавить {{ listType === 'surprise' ? 'сюрприз' : 'желание' }}</button></div>
+      <MasonryGrid v-if="galleryItems.length"><ItemCard v-for="(item, index) in galleryItems" :key="item.id" :item="item" :index="index" @open="detail = $event" @edit="edit" @archive="archive" @delete="deleting = $event; deleteError = ''" /></MasonryGrid>
+      <section class="certificates-section" aria-labelledby="certificates-heading"><div class="section-heading"><h2 id="certificates-heading"><Store :size="18" />Сертификаты<span class="count">{{ certificates.length }}</span></h2><button v-if="own || listType === 'surprise'" class="text-button" @click="addCertificate"><Plus :size="17" /><span>Добавить магазин</span></button></div><div v-if="certificates.length" class="certificate-rail" tabindex="0" role="group" aria-label="Магазины для сертификатов, горизонтальная лента"><ItemCard v-for="(item, index) in certificates" :key="item.id" :item="item" :index="index" @open="detail = $event" @edit="edit" @archive="archive" @delete="deleting = $event; deleteError = ''" /></div><p v-else class="certificate-empty">{{ own || listType === 'surprise' ? 'Любимые магазины для подарочных карт' : 'Магазины пока не добавлены' }}</p></section>
     </template>
     <ItemForm v-if="formOpen" :item="editing" :initial-type="initialType" :recipient-id="recipientId" :list-type="listType" @close="formOpen = false" @saved="saved" />
     <ItemDetail v-if="detail" :item="detail" :own-profile="own" :busy="busy" @close="detail = undefined" @edit="edit" @copy="copy" />

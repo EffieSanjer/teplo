@@ -125,10 +125,11 @@ def list_items(db: Session, ctx: Context, recipient_id: str, list_type: str, set
 
 def serialize(db: Session, ctx: Context, item: Item) -> ItemOut:
     fields = {
-        key: getattr(item, key) for key in ItemOut.model_fields if key not in {"author_name", "can_manage"}
+        key: getattr(item, key) for key in ItemOut.model_fields if key not in {"author_name", "can_manage", "image_is_icon"}
     }
     return ItemOut(
         **fields,
+        image_is_icon=bool(item.image_id and db.get(Media, item.image_id).is_icon),
         author_name=db.get(User, item.author_id).display_name,
         can_manage=item.author_id == ctx.user.id,
     )

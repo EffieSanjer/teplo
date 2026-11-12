@@ -71,6 +71,7 @@ class ItemOut(BaseModel):
     description: str | None
     url: str | None
     image_id: str | None
+    image_is_icon: bool = False
     price: Decimal | None
     currency: str | None
     price_mode: Literal["approximate", "from"]

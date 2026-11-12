@@ -406,6 +406,11 @@ export interface components {
             url: string | null;
             /** Image Id */
             image_id: string | null;
+            /**
+             * Image Is Icon
+             * @default false
+             */
+            image_is_icon: boolean;
             /** Price */
             price: string | null;
             /** Currency */
@@ -439,6 +444,11 @@ export interface components {
         MetadataInput: {
             /** Url */
             url: string;
+            /**
+             * Prefer Logo
+             * @default false
+             */
+            prefer_logo: boolean;
         };
         /** MetadataOut */
         MetadataOut: {
@@ -452,6 +462,11 @@ export interface components {
             currency?: string | null;
             /** Image Id */
             image_id?: string | null;
+            /**
+             * Image Is Icon
+             * @default false
+             */
+            image_is_icon: boolean;
             /** Warning */
             warning?: string | null;
         };

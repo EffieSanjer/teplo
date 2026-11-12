@@ -1059,6 +1059,11 @@
             ],
             "title": "Image Id"
           },
+          "image_is_icon": {
+            "type": "boolean",
+            "title": "Image Is Icon",
+            "default": false
+          },
           "price": {
             "anyOf": [
               {
@@ -1158,6 +1163,11 @@
             "type": "string",
             "maxLength": 2048,
             "title": "Url"
+          },
+          "prefer_logo": {
+            "type": "boolean",
+            "title": "Prefer Logo",
+            "default": false
           }
         },
         "type": "object",
@@ -1223,6 +1233,11 @@
               }
             ],
             "title": "Image Id"
+          },
+          "image_is_icon": {
+            "type": "boolean",
+            "title": "Image Is Icon",
+            "default": false
           },
           "warning": {
             "anyOf": [

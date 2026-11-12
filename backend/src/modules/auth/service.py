@@ -49,7 +49,7 @@ def verify_init_data(raw: str, settings: Settings) -> dict:
             raise ValueError()
         return user
     except (ValueError, KeyError, TypeError):
-        raise HTTPException(401, "Недействительные данные Telegram") from None
+        raise HTTPException(401, "Недействительные данные входа") from None
 
 
 def telegram_login(db: Session, raw: str, settings: Settings) -> tuple[User, str]:
