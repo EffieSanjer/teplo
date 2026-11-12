@@ -1,0 +1,54 @@
+<script setup lang="ts">
+import { Gift, Lightbulb, Sparkles, Store } from 'lucide-vue-next'
+import { computed } from 'vue'
+
+const props = defineProps<{ seed: string; type: 'idea' | 'gift' | 'certificate' }>()
+const variant = computed(() => {
+  // Stable per wish: adding or archiving a neighbour must not change its cover.
+  const hash = Array.from(props.seed).reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 0)
+  return ['orbit', 'ribbon', 'tiles', 'bloom'][hash % 4]
+})
+</script>
+
+<template>
+  <div class="wish-artwork" :class="`artwork-${variant}`" aria-hidden="true">
+    <span class="artwork-shape shape-one" />
+    <span class="artwork-shape shape-two" />
+    <span class="artwork-shape shape-three" />
+    <div class="art-placeholder">
+      <Store v-if="type === 'certificate'" :size="32" :stroke-width="1.5" />
+      <Lightbulb v-else-if="type === 'idea'" :size="32" :stroke-width="1.5" />
+      <Gift v-else :size="32" :stroke-width="1.5" />
+    </div>
+    <Sparkles class="artwork-sparkle" :size="18" :stroke-width="1.4" />
+  </div>
+</template>
+
+<style scoped>
+.wish-artwork { --cover: var(--cover-lilac); --cover-line: var(--cover-lilac-line); --cover-ink: var(--cover-lilac-ink); position: absolute; inset: 0; overflow: hidden; isolation: isolate; display: grid; place-items: center; background: var(--cover); color: var(--cover-ink); }
+.artwork-shape { position: absolute; z-index: -1; pointer-events: none; }
+.art-placeholder { width: 64px; height: 64px; border-radius: 22px; background: color-mix(in srgb, var(--surface) 65%, transparent); transform: rotate(-8deg); }
+.art-placeholder > svg { width: 30px; height: 30px; transform: rotate(8deg); }
+.artwork-sparkle { position: absolute; top: 28%; right: 23%; }
+.artwork-orbit { --cover: var(--cover-peach); --cover-ink: var(--cover-peach-ink); }
+.artwork-orbit .shape-one { width: 108%; aspect-ratio: 1; background: var(--cover-peach-line); opacity: .4; border-radius: 50%; left: -48%; top: 15%; }
+.artwork-orbit .shape-two { width: 78%; aspect-ratio: 1; background: var(--cover-lilac); border-radius: 50%; right: -43%; top: -32%; }
+.artwork-orbit .shape-three { width: 24%; aspect-ratio: 1; border-radius: 50%; background: var(--cover-peach-line); bottom: -12%; right: 8%; }
+.artwork-ribbon { --cover: var(--cover-peach); --cover-line: var(--cover-peach-line); --cover-ink: var(--cover-peach-ink); }
+.artwork-ribbon .shape-one { width: 140%; height: 28%; left: -20%; top: 36%; background: var(--cover-line); transform: rotate(-32deg); opacity: .5; }
+.artwork-ribbon .shape-two { width: 140%; height: 9%; left: -25%; top: 20%; background: var(--cover-line); opacity: .3; transform: rotate(-32deg); }
+.artwork-ribbon .shape-three { width: 28%; aspect-ratio: 1; left: 12%; bottom: -13%; background: var(--cover-line); opacity: .4; border-radius: 50%; }
+.artwork-ribbon .artwork-sparkle { top: 25%; right: 22%; transform: rotate(15deg); }
+.artwork-tiles { --cover: var(--cover-mint); --cover-line: var(--cover-mint-line); --cover-ink: var(--cover-mint-ink); background-image: linear-gradient(var(--cover-line) 1px, transparent 1px), linear-gradient(90deg, var(--cover-line) 1px, transparent 1px); background-size: 36px 36px; background-position: center; }
+.artwork-tiles .shape-one { width: 66%; aspect-ratio: 1; border-radius: 35%; background: var(--cover); transform: rotate(18deg); }
+.artwork-tiles .shape-two { width: 16px; height: 16px; border-radius: 50%; background: var(--cover-line); bottom: 19%; left: 17%; }
+.artwork-bloom { --cover: var(--cover-blue); --cover-line: var(--cover-blue-line); --cover-ink: var(--cover-blue-ink); }
+.artwork-bloom .shape-one, .artwork-bloom .shape-two { width: 82%; height: 32%; border: 1px solid var(--cover-line); border-radius: 50%; transform: rotate(-40deg); }
+.artwork-bloom .shape-two { transform: rotate(40deg); }
+.artwork-bloom .shape-three { width: 56%; aspect-ratio: 1; border-radius: 50%; background: var(--cover-peach-line); opacity: .55; bottom: -28%; right: -5%; }
+@media (max-width: 640px) {
+  .art-placeholder { width: 52px; height: 52px; border-radius: 18px; }
+  .art-placeholder > svg { width: 25px; height: 25px; }
+  .artwork-sparkle { width: 14px; height: 14px; top: 26%; right: 19%; }
+}
+</style>

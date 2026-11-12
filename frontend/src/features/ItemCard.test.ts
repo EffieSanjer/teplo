@@ -39,11 +39,13 @@ describe('ItemCard', () => {
   })
   it('shows certificate shops without prices, including older priced records', () => {
     const wrapper = mount(ItemCard, { props: { item: { ...item, item_type: 'certificate', price_mode: 'from' }, index: 0 } })
-    expect(wrapper.text()).toContain('Сертификат')
+    expect(wrapper.get('.certificate-face').text()).toBe('Книга')
     expect(wrapper.find('.card-bottom strong').exists()).toBe(false)
     expect(wrapper.text()).not.toMatch(/123|примерно|номинал|и выше/)
     expect(wrapper.classes()).toContain('certificate-card')
-    expect(wrapper.get('.certificate-label').text()).toBe('Подарочная карта')
+    expect(wrapper.find('.certificate-label').exists()).toBe(false)
+    expect(wrapper.find('.card-art').exists()).toBe(false)
+    expect(wrapper.find('.art-arrow').exists()).toBe(false)
   })
   it('shows a minimum price without an approximate label', () => {
     const wrapper = mount(ItemCard, { props: { item: { ...item, price_mode: 'from' }, index: 0 } })
@@ -54,6 +56,16 @@ describe('ItemCard', () => {
     const wrapper = mount(ItemCard, { props: { item: { ...item, image_id: 'photo' }, index: 0 } })
     expect(wrapper.get('.card-art').classes()).toContain('art-photo')
     expect(wrapper.find('.art-placeholder').exists()).toBe(false)
+    expect(wrapper.find('.wish-artwork').exists()).toBe(false)
+  })
+  it('keeps the designed cover stable when neighbouring cards change', async () => {
+    const wrapper = mount(ItemCard, { props: { item, index: 0 } })
+    const cover = wrapper.get('.wish-artwork').classes()
+    await wrapper.setProps({ index: 3 })
+    expect(wrapper.get('.wish-artwork').classes()).toEqual(cover)
+    expect(wrapper.classes()).toContain('without-photo')
+    await wrapper.setProps({ item: { ...item, archived_at: '2026-02-01' } })
+    expect(wrapper.get('.wish-artwork').classes()).toEqual(cover)
   })
   it.each([
     [1200, 800, 'landscape'], [800, 1200, 'portrait'], [800, 800, 'square'],
@@ -76,12 +88,32 @@ describe('ItemCard', () => {
     expect(image.classes()).toContain('photo-landscape')
     expect(wrapper.get('.card-art').attributes('style')).toContain('aspect-ratio: 1200 / 800')
   })
-  it('keeps certificates in gift-card format regardless of photo proportions', async () => {
+  it('keeps a compact logo above the title on a certificate', () => {
     const wrapper = mount(ItemCard, { props: { item: { ...item, item_type: 'certificate', image_id: 'photo' }, index: 0 } })
-    const image = wrapper.get('img')
-    Object.defineProperties(image.element, { naturalWidth: { value: 800 }, naturalHeight: { value: 1200 } })
-    await image.trigger('load')
-    expect(wrapper.get('.card-art').attributes('style')).toBeUndefined()
+    expect(wrapper.get('.certificate-logo img').attributes('src')).toContain('photo')
+    expect(wrapper.get('.certificate-logo img').classes()).toContain('site-icon')
+    expect(wrapper.get('.certificate-face h3').text()).toBe('Книга')
+  })
+  it('keeps the title when a certificate logo cannot load', async () => {
+    const wrapper = mount(ItemCard, { props: { item: { ...item, item_type: 'certificate', image_id: 'missing' }, index: 0 } })
+    await wrapper.get('.certificate-logo img').trigger('error')
+    expect(wrapper.find('.certificate-logo').exists()).toBe(false)
+    expect(wrapper.get('.certificate-face h3').text()).toBe('Книга')
+  })
+  it('keeps the certificate composition stable when its neighbours change', async () => {
+    const wrapper = mount(ItemCard, { props: { item: { ...item, item_type: 'certificate' }, index: 0 } })
+    const pattern = wrapper.get('.certificate-face').classes().find(name => name.startsWith('certificate-pattern-'))
+    expect(pattern).toBeTruthy()
+    await wrapper.setProps({ index: 7 })
+    expect(wrapper.get('.certificate-face').classes()).toContain(pattern)
+  })
+  it('shows the part after a dash as a certificate subtitle without changing the item', () => {
+    const certificate = { ...item, item_type: 'certificate' as const, title: 'Арт-студия - Керамика для двоих' }
+    const wrapper = mount(ItemCard, { props: { item: certificate, index: 0 } })
+    expect(wrapper.get('.certificate-face h3').text()).toBe('Арт-студия')
+    expect(wrapper.get('.certificate-subtitle').text()).toBe('Керамика для двоих')
+    expect(wrapper.get('.card-open').attributes('aria-label')).toBe('Открыть: Арт-студия - Керамика для двоих')
+    expect(certificate.title).toBe('Арт-студия - Керамика для двоих')
   })
   it.each([null, '2026-02-01'])('keeps imported logos small in active and archived cards (%s)', async archived_at => {
     const wrapper = mount(ItemCard, { props: { item: { ...item, image_id: 'logo', image_is_icon: true, archived_at }, index: 0 } })

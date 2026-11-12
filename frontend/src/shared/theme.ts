@@ -12,7 +12,7 @@ function preference(value: string | null): ThemePreference {
 
 function applyTheme() {
   document.documentElement.dataset.theme = theme.value
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.value === 'dark' ? '#1d1b19' : '#f6f4ef')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.value === 'dark' ? '#191b23' : '#f5f6fa')
 }
 
 export function setTheme(value: ThemePreference) {

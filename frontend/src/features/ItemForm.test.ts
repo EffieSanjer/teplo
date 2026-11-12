@@ -126,6 +126,9 @@ describe('ItemForm', () => {
     await flushPromises()
     expect(wrapper.get('.upload-area img').attributes('src')).toBe('/api/v1/media/original-photo')
     expect(wrapper.get('[role="alert"]').text()).toContain('Сайт недоступен')
+    expect(wrapper.get('#photo-url-hint').attributes('role')).toBe('alert')
+    expect(wrapper.get('#photo-url').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.get('#photo-url-hint').text()).not.toContain('JPEG')
     expect((wrapper.get('#photo-url').element as HTMLInputElement).value).toBe('https://example.com/photo.jpg')
   })
 
@@ -214,6 +217,9 @@ describe('ItemForm', () => {
     await wrapper.get('.metadata-button').trigger('click')
     await flushPromises()
     expect(wrapper.get('.source-section [role="alert"]').text()).toContain('Сайт недоступен')
+    expect(wrapper.get('#source-link-hint').attributes('role')).toBe('alert')
+    expect(wrapper.get('#source-link-hint').text()).not.toContain('Вставьте из')
+    expect(wrapper.get('input[type="url"]').attributes('aria-invalid')).toBe('true')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(wrapper.emitted('saved')).toHaveLength(1)
@@ -240,6 +246,28 @@ describe('ItemForm', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(wrapper.get('.form-actions').element.previousElementSibling?.textContent).toBe('Не удалось сохранить')
+  })
+
+  it.each([
+    'Загружено первое фото публикации и имя автора.',
+    'Вместо фото использован логотип или значок сайта.',
+  ])('does not announce imported photo provenance: %s', async warning => {
+    vi.mocked(send).mockResolvedValueOnce({ title: 'Находка', image_id: 'photo', warning })
+    const wrapper = form()
+    await paste(wrapper, 'https://example.com/item')
+    expect(wrapper.get('.upload-area img').attributes('src')).toBe('/api/v1/media/photo')
+    expect(wrapper.text()).not.toContain(warning)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('replaces the upload hint with the file error', async () => {
+    const wrapper = form()
+    const file = wrapper.get('input[type="file"]')
+    Object.defineProperty(file.element, 'files', { value: [new File([new Uint8Array(5242881)], 'large.png', { type: 'image/png' })] })
+    await file.trigger('change')
+    expect(wrapper.get('.upload-button small').attributes('role')).toBe('alert')
+    expect(wrapper.get('.upload-button small').text()).toBe('Фото должно быть не больше 5 МБ')
+    expect(wrapper.find('.photo-section .inline-error').exists()).toBe(false)
   })
 
   it('ignores stale metadata errors when a new URL is pasted', async () => {

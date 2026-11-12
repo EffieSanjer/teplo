@@ -35,7 +35,7 @@ test('theme follows device, remembers manual selection and styles dark forms and
   const control = page.getByRole('combobox', { name: 'Тема оформления' })
   await expect(html).toHaveAttribute('data-theme', 'dark')
   await expect(control).toHaveValue('system')
-  await expect(html).toHaveCSS('background-color', 'rgb(29, 27, 25)')
+  await expect(html).toHaveCSS('background-color', 'rgb(25, 27, 35)')
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(html).toHaveAttribute('data-theme', 'light')
   await control.selectOption('dark')
@@ -47,7 +47,7 @@ test('theme follows device, remembers manual selection and styles dark forms and
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     await expect(control).toBeVisible()
-    await expect(page.locator('.gift-card').first()).toHaveCSS('background-color', 'rgb(41, 38, 35)')
+    await expect(page.locator('.gift-card').first()).toHaveCSS('background-color', 'rgb(37, 39, 49)')
     await expect(page.locator('.art-photo').first()).toHaveCSS('background-color', 'rgb(255, 255, 255)')
     await expect(page.locator('.art-photo img').first()).toHaveCSS('filter', 'none')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -55,9 +55,9 @@ test('theme follows device, remembers manual selection and styles dark forms and
   }
   await page.getByRole('button', { name: 'Добавить желание', exact: true }).first().click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog).toHaveCSS('background-color', 'rgb(41, 38, 35)')
-  await expect(dialog.getByLabel('Название')).toHaveCSS('color', 'rgb(243, 237, 229)')
-  await expect(dialog.locator('.upload-button > svg')).toHaveCSS('background-color', 'rgb(255, 139, 77)')
+  await expect(dialog).toHaveCSS('background-color', 'rgb(37, 39, 49)')
+  await expect(dialog.getByLabel('Название')).toHaveCSS('color', 'rgb(238, 238, 245)')
+  await expect(dialog.locator('.upload-button > svg')).toHaveCSS('background-color', 'rgb(68, 51, 43)')
   await dialog.getByLabel('Название').fill('Проверка тёмной темы без сохранения')
   await page.screenshot({ path: 'test-results/dark-form.png', fullPage: true })
   await dialog.getByRole('button', { name: 'Отмена', exact: true }).click()
@@ -67,7 +67,7 @@ test('theme follows device, remembers manual selection and styles dark forms and
   await control.selectOption('system')
   await expect(html).toHaveAttribute('data-theme', 'dark')
   await page.getByRole('navigation', { name: 'Навигация на телефоне' }).getByRole('link', { name: 'Друзья' }).click()
-  await expect(page.locator('.friend-card').first()).toHaveCSS('background-color', 'rgb(41, 38, 35)')
+  await expect(page.locator('.friend-card').first()).toHaveCSS('background-color', 'rgb(37, 39, 49)')
 })
 
 test('masonry cards follow original photo proportions without cropping or zooming', async ({ page }) => {
@@ -142,6 +142,131 @@ test('masonry cards follow original photo proportions without cropping or zoomin
   await expect(page.getByRole('dialog').getByAltText('Вертикальное фото')).toHaveCSS('transform', 'none')
 })
 
+test('designed covers complement product photos, interiors and collages in both themes', async ({ page }) => {
+  await page.route('**/api/v1/users/*/items/wishlist', route => route.fulfill({ json: [
+    { id: 'a', image_id: null, title: 'Мастер-класс по керамике', item_type: 'idea' },
+    { id: 'product', image_id: 'product', title: 'Лампа для уютных вечеров' },
+    { id: 'b', image_id: null, title: 'Выходные за городом', item_type: 'idea' },
+    { id: 'interior', image_id: 'interior', title: 'Уголок для чтения' },
+    { id: 'c', image_id: null, title: 'Что-нибудь для рисования', item_type: 'idea' },
+    { id: 'collage', image_id: 'collage', title: 'Набор красивых мелочей' },
+    { id: 'd', image_id: null, title: 'Билет на концерт' },
+    { id: 'certificate', image_id: null, title: 'Любимый книжный', item_type: 'certificate' },
+  ].map(item => ({ recipient_id: '11111111-1111-4111-8111-111111111111', author_id: 'author', author_name: 'Автор',
+    list_type: 'wishlist', item_type: 'gift', description: 'Небольшая находка для хорошего настроения.',
+    url: 'https://example.com', price: '2500', currency: 'RUB', image_is_icon: false,
+    price_mode: 'approximate', archived_at: null, created_at: '2026-01-01', updated_at: '2026-01-01', can_manage: true,
+    ...item,
+  })) }))
+  await page.route('**/api/v1/media/*', route => {
+    const kind = route.request().url().split('/').pop()
+    const body = kind === 'product'
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500"><rect width="500" height="500" fill="white"/><path d="M180 140h140l45 150H135z" fill="#cfb08a"/><path d="M250 290v110m-70 0h140" stroke="#555365" stroke-width="12"/></svg>'
+      : kind === 'interior'
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800"><rect width="640" height="800" fill="#d6cabb"/><rect y="580" width="640" height="220" fill="#9e8069"/><rect x="60" y="80" width="260" height="330" fill="#eaf0ed"/><path d="M190 80v330M60 245h260" stroke="#b5a595" stroke-width="12"/><rect x="210" y="440" width="310" height="220" rx="65" fill="#637e70"/><path d="M240 650v80m240-80v80" stroke="#51483f" stroke-width="18"/></svg>'
+        : '<svg xmlns="http://www.w3.org/2000/svg" width="700" height="440"><rect width="700" height="440" fill="#ece8f2"/><rect x="12" y="12" width="330" height="416" fill="#b9a9c6"/><rect x="354" y="12" width="334" height="202" fill="#d9bd9b"/><rect x="354" y="226" width="334" height="202" fill="#a8bdb1"/><circle cx="175" cy="220" r="90" fill="#f5f2ec"/><rect x="475" y="65" width="80" height="100" rx="12" fill="#f5f2ec"/><path d="M450 365l70-100 85 100z" fill="#f5f2ec"/></svg>'
+    return route.fulfill({ contentType: 'image/svg+xml', body })
+  })
+  await page.goto('/me', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: /Войти в локальную/ }).click()
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('combobox', { name: 'Тема оформления' }).selectOption(theme)
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 844 })
+      await expect(page.locator('.cards-grid .wish-artwork')).toHaveCount(4)
+      await expect(page.locator('.topbar')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      await expect(page.locator('.topbar')).toHaveCSS('border-bottom-width', '0px')
+      await expect(page.locator('.add-button')).toHaveCSS('background-color', theme === 'light' ? 'rgb(99, 91, 176)' : 'rgb(183, 173, 235)')
+      for (const card of await page.locator('.cards-grid article').all()) {
+        await expect(card).toHaveCSS('border-top-width', '0px')
+        await expect(card.locator('.card-body')).toHaveCSS('border-top-width', '0px')
+      }
+      const variants = await page.locator('.cards-grid .wish-artwork').evaluateAll(elements => elements.map(el =>
+        [...el.classList].find(name => name.startsWith('artwork-'))))
+      expect(new Set(variants).size).toBe(4)
+      for (const title of ['Лампа для уютных вечеров', 'Уголок для чтения', 'Набор красивых мелочей']) {
+        const card = page.locator('article').filter({ hasText: title })
+        await expect(card.locator('.wish-artwork')).toHaveCount(0)
+        await expect(card.locator('.card-art')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+        await expect(card.locator('img')).toHaveCSS('object-fit', 'contain')
+        await expect(card.locator('img')).toHaveCSS('filter', 'none')
+        await expect.poll(() => card.locator('img').evaluate(el => {
+          const image = el as HTMLImageElement, frame = el.parentElement!.getBoundingClientRect()
+          return Math.abs(frame.width / frame.height - image.naturalWidth / image.naturalHeight)
+        })).toBeLessThan(.02)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await page.screenshot({ path: `test-results/soft-gallery-${theme}-${width}.png`, fullPage: true })
+    }
+  }
+  await page.getByRole('button', { name: 'Открыть: Мастер-класс по керамике', exact: true }).click()
+  await expect(page.getByRole('dialog').locator('.wish-artwork')).toHaveCount(1)
+  await expect(page.getByRole('dialog').locator('.wish-artwork')).toHaveAttribute('aria-hidden', 'true')
+})
+
+test('certificate logos blend into branded cards without cropping in both themes', async ({ page }) => {
+  const logos = [
+    { id: 'white', title: 'Книжный клуб - Книги и подарки' }, { id: 'transparent', title: 'Мастерская' },
+    { id: 'solid', title: 'Цветочная лавка' }, { id: 'missing', title: 'Любимый магазин' },
+    { id: null, title: 'Место для вдохновения' },
+  ]
+  await page.route('**/api/v1/users/*/items/wishlist', route => route.fulfill({ json: logos.map((logo, index) => ({
+    id: `certificate-${index}`, recipient_id: '11111111-1111-4111-8111-111111111111', author_id: 'author', author_name: 'Автор',
+    list_type: 'wishlist', item_type: 'certificate', title: logo.title, description: '', url: 'https://example.com',
+    image_id: logo.id, image_is_icon: true, price: null, currency: null, price_mode: 'approximate',
+    archived_at: null, created_at: '2026-01-01', updated_at: '2026-01-01', can_manage: true,
+  })) }))
+  await page.route('**/api/v1/media/*', route => {
+    const kind = route.request().url().split('/').pop()
+    if (kind === 'missing') return route.fulfill({ status: 404 })
+    const background = kind === 'white' ? '<rect width="120" height="120" fill="white"/>'
+      : kind === 'solid' ? '<rect width="120" height="120" fill="#506247"/>' : ''
+    const ink = kind === 'solid' ? '#ffffff' : '#73529a'
+    return route.fulfill({ contentType: 'image/svg+xml', body: `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">${background}<path d="M30 30h60v60H30z" fill="${ink}"/><path d="M45 45h30v30H45z" fill="${kind === 'solid' ? '#506247' : '#ffffff'}"/></svg>` })
+  })
+  await page.goto('/me', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: /Войти в локальную/ }).click()
+  for (const theme of ['light', 'dark']) {
+    await page.getByRole('combobox', { name: 'Тема оформления' }).selectOption(theme)
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 844 })
+      for (const { id, title } of logos) {
+        const card = page.locator('.certificate-card').filter({ has: page.getByRole('button', { name: `Открыть: ${title}`, exact: true }) })
+        await expect(card.locator('h3')).toHaveText(title.split(' - ')[0]!)
+        if (id === 'white') {
+          await expect(card.locator('.certificate-subtitle')).toHaveText('Книги и подарки')
+          const heading = (await card.locator('h3').boundingBox())!
+          const subtitle = (await card.locator('.certificate-subtitle').boundingBox())!
+          expect(subtitle.y).toBeGreaterThanOrEqual(heading.y + heading.height)
+        }
+        const layers = await card.locator('.certificate-face').evaluate(el => ({
+          before: getComputedStyle(el, '::before').backgroundImage,
+          after: getComputedStyle(el, '::after').backgroundImage,
+          pointerEvents: getComputedStyle(el, '::before').pointerEvents,
+        }))
+        expect(layers.before).not.toBe('none')
+        expect(layers.after).not.toBe('none')
+        expect(layers.pointerEvents).toBe('none')
+        if (!id || id === 'missing') {
+          await expect(card.locator('img')).toHaveCount(0)
+          continue
+        }
+        const image = card.locator('img')
+        await expect(image).toHaveCSS('width', '64px')
+        await expect(image).toHaveCSS('object-fit', 'contain')
+        await expect(image).toHaveCSS('filter', 'none')
+        const logoBounds = (await card.locator('.certificate-logo').boundingBox())!
+        const titleBounds = (await card.locator('h3').boundingBox())!
+        expect(titleBounds.y - (logoBounds.y + logoBounds.height)).toBeGreaterThanOrEqual(23)
+        await expect.poll(() => card.evaluate(el => el.style.getPropertyValue('--certificate-logo-bg')))
+          .toBe(id === 'white' ? 'rgb(255, 255, 255)' : id === 'solid' ? 'rgb(80, 98, 71)' : 'transparent')
+      }
+      await page.locator('.certificates-section').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: `test-results/certificate-blend-${theme}-${width}.png`, fullPage: true })
+    }
+  }
+})
+
 test('site icons stay small in cards, certificates, archive, details and editing', async ({ page }) => {
   await page.route('**/api/v1/users/*/items/wishlist', route => route.fulfill({ json: [
     { id: 'icon', image_id: 'tiny', image_is_icon: true, item_type: 'gift', title: 'Значок сайта' },
@@ -164,7 +289,7 @@ test('site icons stay small in cards, certificates, archive, details and editing
     await page.getByRole('combobox', { name: 'Тема оформления' }).selectOption(theme)
     for (const width of [1440, 320]) {
       await page.setViewportSize({ width, height: 844 })
-      for (const [title, size] of [['Значок сайта', 32], ['Магазин', 64], ['Старый значок', 32]] as const) {
+      for (const [title, size] of [['Значок сайта', 32], ['Старый значок', 32]] as const) {
         const image = page.locator('article').filter({ hasText: title }).locator('img')
         await expect(image).toHaveCSS('width', `${size}px`)
         await expect(image).toHaveCSS('height', `${size}px`)
@@ -174,6 +299,13 @@ test('site icons stay small in cards, certificates, archive, details and editing
           return Math.abs(image.x + image.width / 2 - frame.x - frame.width / 2) < 1
         })).toBe(true)
       }
+      const certificate = page.locator('article').filter({ hasText: 'Магазин' })
+      await expect(certificate.locator('.certificate-logo img')).toHaveCSS('width', '64px')
+      await expect(certificate.locator('.certificate-logo img')).toHaveCSS('object-fit', 'contain')
+      await expect(certificate).toHaveCSS('background-color', 'rgb(255, 120, 56)')
+      await expect(certificate.locator('.certificate-face')).toHaveText('Магазин')
+      const bounds = (await certificate.boundingBox())!
+      expect(Math.abs(bounds.width / bounds.height - 1.586)).toBeLessThan(.02)
       const photo = page.locator('article').filter({ hasText: 'Обычное фото' }).locator('img')
       expect((await photo.boundingBox())!.width).toBeGreaterThan(100)
     }
@@ -192,8 +324,8 @@ test('local login, CRUD, archive and friend surprise', async ({ page }) => {
   await page.getByRole('button', { name: /Войти в локальную/ }).click()
   await expect(page.getByRole('heading', { name: 'Мой вишлист', exact: true })).toBeVisible()
   await expect(page.locator('.page-heading .count')).toBeVisible()
-  await expect(page.locator('.add-button')).toHaveCSS('background-color', 'rgb(185, 74, 40)')
-  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(246, 244, 239)')
+  await expect(page.locator('.add-button')).toHaveCSS('background-color', 'rgb(99, 91, 176)')
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(245, 246, 250)')
   const title = `Проверка ${Date.now()}`
   await page.getByRole('button', { name: 'Добавить желание', exact: true }).first().click()
   await page.getByLabel('Название').fill(title)
@@ -330,7 +462,7 @@ test('pasting shared text extracts a URL and fills only empty fields without a b
       await expect(dialog.getByLabel('Название')).toHaveValue('Находка по ссылке')
       await expect(dialog.getByAltText('Фотография подарка')).toBeVisible()
     } else {
-      await expect(dialog.getByRole('status')).toContainText('Сайт не предоставил фото')
+      await expect(dialog.getByRole('status')).toContainText('Недостающее можно добавить вручную')
     }
     await expect(dialog.getByLabel('Заметка')).toHaveValue('Мой комментарий')
     await dialog.getByLabel('Название').fill('Моя находка')
@@ -361,11 +493,26 @@ test('compact add form keeps source warnings and errors visible in both themes',
       const photo = dialog.locator('.upload-area')
       const name = dialog.getByLabel('Название')
       await expect(dialog.getByRole('heading')).toHaveCount(1)
-      await expect(dialog.locator('.type-switch .selected')).toHaveCSS('background-color', theme === 'light' ? 'rgb(255, 120, 56)' : 'rgb(255, 139, 77)')
-      await expect(dialog.locator('.form-actions .primary')).toHaveCSS('color', 'rgb(52, 23, 12)')
+      await expect(dialog.locator('.type-switch .selected')).toHaveCSS('background-color', theme === 'light' ? 'rgb(249, 231, 218)' : 'rgb(68, 51, 43)')
+      await expect(dialog.locator('.form-actions .primary')).toHaveCSS('color', theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(43, 37, 71)')
+      await expect(dialog.locator('.form-actions .primary')).toHaveCSS('background-color', theme === 'light' ? 'rgb(99, 91, 176)' : 'rgb(183, 173, 235)')
+      await expect(dialog.locator('.type-switch')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      for (const button of await dialog.locator('.type-switch button:not(.selected)').all()) {
+        await expect(button).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+        await expect(button).toHaveCSS('color', theme === 'light' ? 'rgb(41, 43, 56)' : 'rgb(238, 238, 245)')
+      }
+      await expect(dialog.locator('.details-section')).toHaveCSS('border-top-width', '0px')
+      await expect(dialog.locator('.form-actions')).toHaveCSS('border-top-width', '0px')
+      await expect(dialog.locator('.price-input-row')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
       for (const field of [source, name, dialog.getByLabel('Заметка')]) {
+        await expect(field).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
         await field.focus()
-        await expect(field === source ? dialog.locator('.input-with-icon') : field).toHaveCSS('border-top-color', theme === 'light' ? 'rgb(188, 66, 13)' : 'rgb(255, 156, 104)')
+        const frame = field === source ? dialog.locator('.input-with-icon') : field
+        await expect(frame).toHaveCSS('border-top-width', '1px')
+        await expect(frame).toHaveCSS('border-left-width', '1px')
+        await expect(frame).toHaveCSS('border-bottom-color', theme === 'light' ? 'rgb(99, 91, 176)' : 'rgb(183, 173, 235)')
+        await expect(frame).not.toHaveCSS('box-shadow', 'none')
+        await expect(field).toHaveCSS('outline-style', 'none')
       }
       await expect(dialog.locator('.identity-section')).toHaveCSS('border-top-width', '0px')
       await source.focus()
@@ -391,6 +538,9 @@ test('compact add form keeps source warnings and errors visible in both themes',
       finish!()
       finish = undefined
       const feedback = dialog.locator('.source-section').getByRole(warning ? 'status' : 'alert')
+      await expect(feedback).toHaveAttribute('id', 'source-link-hint')
+      await expect(dialog.locator('.source-section .inline-error')).toHaveCount(0)
+      if (!warning) await expect(dialog.locator('.input-with-icon')).toHaveCSS('border-bottom-color', theme === 'light' ? 'rgb(233, 181, 171)' : 'rgb(152, 87, 75)')
       await expect(feedback).toBeInViewport({ ratio: 1 })
       await expect(dialog.getByRole('heading', { name: 'Новое желание', exact: true })).toBeInViewport({ ratio: 1 })
       await expect(dialog.getByRole('button', { name: 'Закрыть', exact: true })).toBeInViewport({ ratio: 1 })
@@ -423,7 +573,7 @@ test('share caption supplies missing title and price without a site icon fallbac
   await expect(dialog.locator('.price-from')).toHaveAttribute('aria-pressed', 'true')
   await expect(dialog.getByLabel('Заметка')).toHaveValue('')
   await expect(dialog.getByAltText('Фотография подарка')).toHaveCount(0)
-  await expect(dialog.getByRole('status')).toContainText('Не удалось загрузить фото')
+  await expect(dialog.getByRole('status')).toContainText('Недостающее можно добавить вручную')
   await dialog.getByRole('button', { name: 'Отмена', exact: true }).click()
 })
 
@@ -535,10 +685,9 @@ test('certificate shop autofills without blur, hides pricing and supports editin
   await expect(card.locator('.card-bottom strong')).toHaveCount(0)
   for (const width of [1440, 1280, 768, 390, 360, 320]) {
     await page.setViewportSize({ width, height: 844 })
-    await expect(card.locator('.card-open')).toHaveCSS('flex-direction', 'column')
-    await expect(card.locator('.certificate-label')).toHaveText('Подарочная карта')
-    await expect(card.locator('.card-body')).toHaveCSS('border-top-color', 'rgb(185, 74, 40)')
-    await expect(card.locator('.card-body')).toHaveCSS('border-top-width', '3px')
+    await expect(card.locator('.certificate-face')).toHaveText(title)
+    await expect(card.locator('.certificate-label, .card-art, .art-arrow, img')).toHaveCount(0)
+    await expect(card).toHaveCSS('border-top-width', '0px')
     await expect(section.locator('.certificate-rail')).toHaveCSS('flex-wrap', 'nowrap')
     expect((await card.boundingBox())!.width).toBeLessThanOrEqual(261)
     expect(await card.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
