@@ -1,0 +1,134 @@
+from datetime import timedelta
+
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from src.config import Settings
+from src.infrastructure.database import Item, Media, User, utcnow
+from src.modules.auth.service import Context
+from src.modules.communities.service import require_recipient
+from src.modules.gifts.schemas import ItemCreate, ItemInput, ItemOut
+
+
+def missing():
+    raise HTTPException(404, "Не найдено")
+
+
+def require_list(db: Session, ctx: Context, recipient_id: str, list_type: str, settings: Settings):
+    if list_type == "surprise" and recipient_id == ctx.user.id:
+        missing()
+    require_recipient(db, recipient_id, ctx.community_id, settings)
+
+
+def accessible(db: Session, ctx: Context, item: Item, settings: Settings) -> bool:
+    if item.list_type == "surprise" and (
+        item.recipient_id == ctx.user.id or item.community_id != ctx.community_id
+    ):
+        return False
+    try:
+        require_recipient(db, item.recipient_id, ctx.community_id, settings)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            return False
+        raise
+    return True
+
+
+def get_item(db: Session, ctx: Context, item_id: str, settings: Settings, manage: bool = False) -> Item:
+    item = db.get(Item, item_id)
+    if not item or not accessible(db, ctx, item, settings):
+        missing()
+    if manage and item.author_id != ctx.user.id:
+        missing()
+    return item
+
+
+def attach_image(
+    db: Session, ctx: Context, image_id: str | None, settings: Settings, previous_id: str | None = None
+):
+    if not image_id or image_id == previous_id:
+        return
+    media = db.get(Media, image_id)
+    # Reuse of attached media only through the explicit copy operation.
+    if (
+        not media
+        or media.owner_id != ctx.user.id
+        or media.attached_at is not None
+        or media.created_at <= utcnow() - timedelta(hours=settings.unattached_media_ttl_hours)
+    ):
+        missing()
+    media.attached_at = utcnow()
+
+
+def create_item(db: Session, ctx: Context, body: ItemCreate, settings: Settings) -> Item:
+    require_list(db, ctx, body.recipient_id, body.list_type, settings)
+    if body.list_type == "wishlist" and body.recipient_id != ctx.user.id:
+        missing()
+    attach_image(db, ctx, body.image_id, settings)
+    item = Item(
+        **body.model_dump(),
+        author_id=ctx.user.id,
+        community_id=ctx.community_id if body.list_type == "surprise" else None,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def update_item(db: Session, ctx: Context, item_id: str, body: ItemInput, settings: Settings) -> Item:
+    item = get_item(db, ctx, item_id, settings, manage=True)
+    if item.archived_at:
+        raise HTTPException(409, "Сначала восстановите запись из архива")
+    attach_image(db, ctx, body.image_id, settings, item.image_id)
+    for field, value in body.model_dump().items():
+        setattr(item, field, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def copy_as_surprise(db: Session, ctx: Context, item_id: str, settings: Settings) -> Item:
+    source = get_item(db, ctx, item_id, settings)
+    if source.list_type != "wishlist" or source.recipient_id == ctx.user.id or source.archived_at:
+        missing()
+    # Media is shared safely: each read checks all linked records, not uploader identity.
+    fields = {field: getattr(source, field) for field in ItemInput.model_fields}
+    item = Item(
+        **fields,
+        recipient_id=source.recipient_id,
+        author_id=ctx.user.id,
+        list_type="surprise",
+        community_id=ctx.community_id,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def list_items(db: Session, ctx: Context, recipient_id: str, list_type: str, settings: Settings):
+    require_list(db, ctx, recipient_id, list_type, settings)
+    query = select(Item).where(Item.recipient_id == recipient_id, Item.list_type == list_type)
+    if list_type == "surprise":
+        query = query.where(Item.community_id == ctx.community_id)
+    return db.scalars(
+        query.order_by(
+            Item.archived_at.is_not(None),
+            Item.archived_at.desc(),
+            Item.created_at.desc(),
+            Item.id.desc(),
+        )
+    ).all()
+
+
+def serialize(db: Session, ctx: Context, item: Item) -> ItemOut:
+    fields = {
+        key: getattr(item, key) for key in ItemOut.model_fields if key not in {"author_name", "can_manage"}
+    }
+    return ItemOut(
+        **fields,
+        author_name=db.get(User, item.author_id).display_name,
+        can_manage=item.author_id == ctx.user.id,
+    )
