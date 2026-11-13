@@ -78,6 +78,43 @@ def test_host_and_anonymous(db):
         assert client.get("/api/v1/media/unknown").status_code == 401
 
 
+def test_webview_cross_site_metadata_with_exact_origin(client):
+    headers = {"Sec-Fetch-Site": "cross-site"}
+    assert client.get("/api/v1/auth/session", headers=headers).status_code == 200
+    assert client.post("/api/v1/auth/dev", headers=headers).status_code == 200
+    # A correct Origin does not replace the per-session CSRF check.
+    client.headers.pop("X-CSRF-Token")
+    assert client.post("/api/v1/items", json={}, headers=headers).status_code == 403
+
+
+def test_webview_originless_reads_require_non_simple_header(client):
+    client.headers.pop("Origin")
+    headers = {"Sec-Fetch-Site": "cross-site"}
+    assert client.get("/api/v1/auth/config", headers=headers).status_code == 403
+    headers["X-Wishlist-Request"] = "same-origin"
+    assert client.get("/api/v1/auth/config", headers=headers).status_code == 200
+    assert client.get("/api/v1/auth/session", headers=headers).status_code == 200
+    assert client.post("/api/v1/auth/dev", headers=headers).status_code == 403
+    # Neither image embeds nor a cross-site preflight can use this exception.
+    assert client.get("/api/v1/media/unknown", headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
+    assert client.options("/api/v1/auth/config", headers=headers).status_code == 403
+
+
+@pytest.mark.parametrize("origin", ["https://evil.test", "null", "http://testserver.evil.test"])
+def test_foreign_origin_not_overridden_by_webview_header(client, origin):
+    headers = {
+        "Origin": origin, "Sec-Fetch-Site": "cross-site", "X-Wishlist-Request": "same-origin",
+    }
+    assert client.get("/api/v1/auth/config", headers=headers).status_code == 403
+    assert client.post("/api/v1/auth/dev", headers=headers).status_code == 403
+    response = client.options("/api/v1/auth/telegram", headers={
+        **headers, "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "x-wishlist-request,content-type",
+    })
+    assert response.status_code == 403
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_expired_session_and_logout(client, db):
     assert client.post("/api/v1/auth/logout").status_code == 204
     assert client.get("/api/v1/auth/session").status_code == 401

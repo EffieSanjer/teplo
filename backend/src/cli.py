@@ -185,8 +185,13 @@ def seed(db: Session):
 
 def configure_telegram(db: Session):
     settings = get_settings()
-    if settings.dev_login_enabled or not settings.telegram_chat_id:
-        raise SystemExit("Disable development login and configure TELEGRAM_CHAT_ID first")
+    if settings.dev_login_enabled or settings.telegram_mode == "disabled":
+        raise SystemExit("Disable development login and enable Telegram first")
+    if not settings.telegram_chat_id:
+        if not settings.telegram_allow_private_login:
+            raise SystemExit("Configure TELEGRAM_CHAT_ID for group-only access")
+        print("Personal Telegram login enabled; no group configured.")
+        return
     if not db.get(Community, REAL_COMMUNITY):
         db.add(Community(id=REAL_COMMUNITY, name="Наши вишлисты"))
         db.flush()

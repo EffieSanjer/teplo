@@ -15,4 +15,4 @@ coverage/
 *.tsbuildinfo
 playwright-report/
 test-results/
-
+opencode.json

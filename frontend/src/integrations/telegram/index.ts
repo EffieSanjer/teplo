@@ -11,6 +11,14 @@ interface TelegramApp {
 
 declare global { interface Window { Telegram?: { WebApp?: TelegramApp } } }
 
+function launchData() {
+  // Read before router redirects can replace the Telegram launch fragment.
+  return new URLSearchParams(window.location.hash.slice(1)).get('tgWebAppData')
+    || new URLSearchParams(window.location.search).get('tgWebAppData') || ''
+}
+
+const initialLaunchData = launchData()
+
 function app() {
   const sdk = window.Telegram?.WebApp
   return sdk?.initData ? sdk : undefined
@@ -18,7 +26,7 @@ function app() {
 
 export async function initTelegram() {
   // Ordinary localhost/browser usage must not wait for an external Telegram script.
-  const hasTelegramLaunch = /tgWebAppData=/.test(window.location.hash + window.location.search)
+  const hasTelegramLaunch = Boolean(initialLaunchData || launchData())
   if (!window.Telegram?.WebApp && hasTelegramLaunch) {
     await new Promise<void>(resolve => {
       const script = document.createElement('script')
@@ -32,7 +40,9 @@ export async function initTelegram() {
   }
   app()?.ready(); app()?.expand()
 }
-export function initData() { return app()?.initData || '' }
+// These are untrusted credentials until the backend checks Telegram's signature
+// and auth_date. Never use parsed user fields as a client-side login substitute.
+export function initData() { return app()?.initData || initialLaunchData || launchData() }
 export function openExternal(url: string) {
   if (app()) app()!.openLink(url)
   else window.open(url, '_blank', 'noopener,noreferrer')

@@ -15,8 +15,10 @@ from src.config import Settings, get_settings
 from src.infrastructure.database import (
     AuthIdentity,
     AuthSession,
+    Community,
     CommunityIntegration,
     Membership,
+    PersonalWorkspace,
     User,
     get_db,
     utcnow,
@@ -60,10 +62,18 @@ def telegram_login(db: Session, raw: str, settings: Settings) -> tuple[User, str
         select(CommunityIntegration).where(
             CommunityIntegration.telegram_chat_id == settings.telegram_chat_id,
         )
-    )
-    if not integration:
+    ) if settings.telegram_chat_id else None
+    group_access = False
+    if integration:
+        try:
+            group_access = check_membership(settings, integration.telegram_chat_id, tg["id"])
+        except HTTPException as exc:
+            # A failed group check never grants group access. Private access is isolated.
+            if exc.status_code != 503 or not settings.telegram_allow_private_login:
+                raise
+    if not integration and not settings.telegram_allow_private_login:
         raise HTTPException(503, "Сообщество ещё не настроено")
-    if not check_membership(settings, integration.telegram_chat_id, tg["id"]):
+    if not group_access and not settings.telegram_allow_private_login:
         raise HTTPException(403, "Войти могут только участники настроенного чата")
     identity = db.scalar(
         select(AuthIdentity).where(
@@ -88,13 +98,24 @@ def telegram_login(db: Session, raw: str, settings: Settings) -> tuple[User, str
                 username=(tg.get("username") or "")[:120] or None,
             )
         )
-    member = db.get(Membership, (integration.community_id, user.id))
+    if group_access:
+        community_id = integration.community_id
+    else:
+        personal = db.scalar(select(PersonalWorkspace).where(PersonalWorkspace.user_id == user.id))
+        if not personal:
+            community = Community(name="Личный вишлист")
+            db.add(community)
+            db.flush()
+            personal = PersonalWorkspace(community_id=community.id, user_id=user.id)
+            db.add(personal)
+        community_id = personal.community_id
+    member = db.get(Membership, (community_id, user.id))
     if member:
         member.status, member.checked_at = "active", utcnow()
     else:
-        db.add(Membership(community_id=integration.community_id, user_id=user.id, status="active"))
+        db.add(Membership(community_id=community_id, user_id=user.id, status="active"))
     db.commit()
-    return user, integration.community_id
+    return user, community_id
 
 
 def create_session(db: Session, response: Response, user_id: str, community_id: str, settings: Settings):
@@ -135,10 +156,23 @@ def get_context(request: Request, db: Session = Depends(get_db), settings: Setti
     if not session or session.expires_at <= utcnow():
         raise HTTPException(401, "Войдите в приложение")
     integration = db.get(CommunityIntegration, session.community_id)
+    personal = db.get(PersonalWorkspace, session.community_id)
     if settings.telegram_mode != "disabled":
-        if not integration or integration.telegram_chat_id != settings.telegram_chat_id:
+        identity = db.scalar(select(AuthIdentity).where(
+            AuthIdentity.user_id == session.user_id,
+            AuthIdentity.provider == "telegram",
+        ))
+        private_access = (
+            personal and personal.user_id == session.user_id
+            and settings.telegram_allow_private_login and identity
+        )
+        group_access = (
+            not personal and integration and settings.telegram_chat_id is not None
+            and integration.telegram_chat_id == settings.telegram_chat_id
+        )
+        if not private_access and not group_access:
             raise HTTPException(403, "Нет доступа к сообществу")
-    elif not settings.dev_login_enabled:
+    elif not settings.dev_login_enabled or personal:
         raise HTTPException(403, "Нет доступа к сообществу")
     require_member(db, session.user_id, session.community_id, settings)
     if request.method not in {"GET", "HEAD", "OPTIONS"}:

@@ -77,6 +77,12 @@ class Membership(Base):
     __table_args__ = (CheckConstraint("status IN ('active', 'left')", name="membership_status"),)
 
 
+class PersonalWorkspace(Base):
+    __tablename__ = "personal_workspaces"
+    community_id: Mapped[str] = mapped_column(ForeignKey("communities.id"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True)
+
+
 class Media(Base):
     __tablename__ = "media"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)

@@ -40,7 +40,18 @@ async def security(request: Request, call_next):
         response = JSONResponse({"detail": "Недопустимый источник запроса"}, status_code=403)
     elif request.method not in {"GET", "HEAD", "OPTIONS"} and origin != settings.origin:
         response = JSONResponse({"detail": "Требуется Origin"}, status_code=403)
-    elif request.headers.get("sec-fetch-site") == "cross-site":
+    elif (
+        request.headers.get("sec-fetch-site") == "cross-site"
+        and origin != settings.origin
+        and not (
+            request.method in {"GET", "HEAD"}
+            and request.headers.get("x-wishlist-request") == "same-origin"
+        )
+    ):
+        # Embedded WebViews can report the outer context as cross-site. Exact
+        # Origin takes precedence. Origin-less reads require our custom header:
+        # foreign browser pages cannot send it without a CORS preflight, which
+        # is denied here. Never exempt writes from the mandatory Origin check.
         response = JSONResponse({"detail": "Межсайтовый запрос запрещён"}, status_code=403)
     else:
         response = await call_next(request)

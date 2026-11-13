@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowUpRight, Bookmark, LogOut, MessageCircle, ShieldCheck, Users } from 'lucide-vue-next'
-import { api, authReady, clearSession, invalidation, send, session, type Session } from './shared/api'
+import { ApiError, api, authReady, clearSession, invalidation, send, session, type Session } from './shared/api'
 import { notice } from './shared/notifications'
 import { backButton, initData, initTelegram } from './integrations/telegram'
 import ThemeControl from './shared/ThemeControl.vue'
@@ -27,14 +27,22 @@ async function bootstrap() {
   try {
     config.value = await api('/auth/config')
     try { session.value = await api<Session>('/auth/session') }
-    catch { if (initData() && config.value.telegram_enabled) await login() }
+    catch (e) {
+      if (!(e instanceof ApiError) || e.status !== 401) throw e
+      if (initData() && config.value.telegram_enabled) await login()
+    }
   } catch (e) { error.value = (e as Error).message }
   finally { authReady.value = true; busy.value = false }
 }
 async function logout() {
   try { await send('/auth/logout') } finally { clearSession(); await router.replace('/me') }
 }
-onMounted(async () => { await initTelegram(); await bootstrap() })
+onMounted(async () => {
+  // Launch credentials are captured locally; an unreachable optional SDK must
+  // not delay authentication or leave the initial screen waiting for it.
+  void initTelegram().catch(() => {})
+  await bootstrap()
+})
 </script>
 
 <template>

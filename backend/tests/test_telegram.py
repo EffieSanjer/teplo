@@ -47,6 +47,7 @@ def test_nonmember_never_registered(db, monkeypatch):
             "telegram_mode": "polling",
             "telegram_bot_token": "123:secret",
             "telegram_chat_id": -123,
+            "telegram_allow_private_login": False,
         }
     )
     db.add(Community(id=REAL_COMMUNITY, name="Настоящее сообщество"))

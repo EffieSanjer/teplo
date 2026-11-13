@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     telegram_chat_id: int | None = None
     telegram_bot_username: str = ""
     telegram_app_name: str = ""
+    telegram_allow_private_login: bool = True
     membership_ttl_seconds: int = 60
     session_ttl_seconds: int = 604800
     init_data_ttl_seconds: int = 300
@@ -51,8 +52,11 @@ class Settings(BaseSettings):
             raise ValueError("Production requires HTTPS")
         if self.telegram_mode not in {"disabled", "polling"}:
             raise ValueError("Supported TELEGRAM_MODE values: disabled, polling")
-        if self.telegram_mode != "disabled" and (not self.telegram_bot_token or not self.telegram_chat_id):
-            raise ValueError("Telegram mode requires bot token and chat ID")
+        if self.telegram_mode != "disabled":
+            if not self.telegram_bot_token:
+                raise ValueError("Telegram mode requires bot token")
+            if not self.telegram_allow_private_login and not self.telegram_chat_id:
+                raise ValueError("Group-only Telegram mode requires chat ID")
         if min(self.membership_ttl_seconds, self.session_ttl_seconds, self.init_data_ttl_seconds) <= 0:
             raise ValueError("TTL values must be positive")
         return self

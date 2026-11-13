@@ -5,7 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.config import Settings
-from src.infrastructure.database import AuthIdentity, CommunityIntegration, Membership, User, utcnow
+from src.infrastructure.database import (
+    AuthIdentity, CommunityIntegration, Membership, PersonalWorkspace, User, utcnow,
+)
 from src.integrations.telegram.client import check_membership
 
 
@@ -13,6 +15,11 @@ def require_member(db: Session, user_id: str, community_id: str, settings: Setti
     member = db.get(Membership, (community_id, user_id))
     if not member or member.status != "active":
         raise HTTPException(403, "Нет доступа к сообществу")
+    personal = db.get(PersonalWorkspace, community_id)
+    if personal:
+        if not settings.telegram_allow_private_login or personal.user_id != user_id:
+            raise HTTPException(403, "Нет доступа к сообществу")
+        return member
     integration = db.get(CommunityIntegration, community_id)
     if integration and member.checked_at < utcnow() - timedelta(seconds=settings.membership_ttl_seconds):
         identity = db.scalar(
