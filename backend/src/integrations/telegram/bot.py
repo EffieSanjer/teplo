@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
@@ -15,6 +16,11 @@ from aiogram.types import (
 from src.config import get_settings
 
 
+def invitation_path(text: str | None) -> str | None:
+    match = re.fullmatch(r"/start(?:@[A-Za-z0-9_]+)?\s+friend_([A-Za-z0-9_-]{43})", text or "")
+    return "/friends?invite=" + match[1] if match else None
+
+
 async def main():
     settings = get_settings()
     if settings.telegram_mode != "polling":
@@ -29,6 +35,15 @@ async def main():
             await message.answer(
                 "Привет! Локальный интерфейс нужно открыть в браузере на компьютере, "
                 "где запущен проект. Mini App будет доступен после настройки публичного HTTPS."
+            )
+            return
+        invite = invitation_path(message.text)
+        if invite:
+            await message.answer(
+                "Вас пригласили в друзья. Откройте приложение, чтобы посмотреть приглашение и подтвердить его.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="Посмотреть приглашение", web_app=WebAppInfo(url=settings.origin + invite)),
+                ]]),
             )
             return
         await message.answer(

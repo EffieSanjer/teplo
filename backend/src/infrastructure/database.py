@@ -83,6 +83,28 @@ class PersonalWorkspace(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True)
 
 
+class Friendship(Base):
+    __tablename__ = "friendships"
+    __table_args__ = (CheckConstraint("user_id < friend_id", name="friendship_order"),)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    friend_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class FriendInvitation(Base):
+    __tablename__ = "friend_invitations"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    accepted_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+
+
+class FriendSurpriseSpace(Base):
+    __tablename__ = "friend_surprise_spaces"
+    recipient_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    community_id: Mapped[str] = mapped_column(ForeignKey("communities.id"), unique=True)
+
+
 class Media(Base):
     __tablename__ = "media"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)

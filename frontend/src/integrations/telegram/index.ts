@@ -3,6 +3,7 @@ interface TelegramApp {
   ready(): void
   expand(): void
   openLink(url: string): void
+  openTelegramLink?(url: string): void
   BackButton: { show(): void; hide(): void; onClick(fn: () => void): void; offClick(fn: () => void): void }
   onEvent(name: string, fn: () => void): void
   offEvent(name: string, fn: () => void): void
@@ -54,4 +55,10 @@ export function backButton(visible: boolean, callback: () => void) {
   else sdk.BackButton.hide()
   sdk.BackButton.onClick(callback)
   return () => sdk.BackButton.offClick(callback)
+}
+export function shareInvitation(url: string) {
+  const target = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('Давай делиться желаниями в «Кстати»')}`
+  const sdk = app()
+  if (sdk?.openTelegramLink) sdk.openTelegramLink(target)
+  else window.open(target, '_blank', 'noopener,noreferrer')
 }

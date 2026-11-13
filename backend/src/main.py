@@ -17,6 +17,7 @@ from src.modules.auth.routes import router as auth_router
 from src.modules.gifts.routes import router as gifts_router
 from src.modules.media.routes import router as media_router
 from src.modules.users.routes import router as users_router
+from src.modules.users.invitations import router as friends_router
 
 settings = get_settings()
 app = FastAPI(
@@ -96,5 +97,5 @@ def health() -> dict[str, str]:
         return JSONResponse({"status": "unavailable"}, status_code=503)
 
 
-for router in (auth_router, users_router, gifts_router, media_router, metadata_router):
+for router in (auth_router, users_router, friends_router, gifts_router, media_router, metadata_router):
     app.include_router(router, prefix="/api/v1")

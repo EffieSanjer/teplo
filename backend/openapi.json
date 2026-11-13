@@ -219,6 +219,157 @@
         }
       }
     },
+    "/api/v1/friends/invitations": {
+      "post": {
+        "tags": [
+          "friends"
+        ],
+        "summary": "Create Invitation",
+        "operationId": "create_invitation_api_v1_friends_invitations_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "friends"
+        ],
+        "summary": "Revoke Invitation",
+        "operationId": "revoke_invitation_api_v1_friends_invitations_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/friends/invitations/{token}": {
+      "get": {
+        "tags": [
+          "friends"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_api_v1_friends_invitations__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/friends/accept": {
+      "post": {
+        "tags": [
+          "friends"
+        ],
+        "summary": "Accept",
+        "operationId": "accept_api_v1_friends_accept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/friends/{user_id}": {
+      "delete": {
+        "tags": [
+          "friends"
+        ],
+        "summary": "Remove Friend",
+        "operationId": "remove_friend_api_v1_friends__user_id__delete",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/{recipient_id}/items/{list_type}": {
       "get": {
         "tags": [
@@ -753,6 +904,56 @@
           "url"
         ],
         "title": "ImageUrlInput"
+      },
+      "InvitationInput": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "InvitationInput"
+      },
+      "InvitationOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "InvitationOut"
+      },
+      "InvitationPreview": {
+        "properties": {
+          "inviter": {
+            "$ref": "#/components/schemas/UserOut"
+          },
+          "own": {
+            "type": "boolean",
+            "title": "Own"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inviter",
+          "own"
+        ],
+        "title": "InvitationPreview"
       },
       "ItemCreate": {
         "properties": {
@@ -1300,6 +1501,16 @@
           "display_name": {
             "type": "string",
             "title": "Display Name"
+          },
+          "is_friend": {
+            "type": "boolean",
+            "title": "Is Friend",
+            "default": false
+          },
+          "can_surprise": {
+            "type": "boolean",
+            "title": "Can Surprise",
+            "default": false
           }
         },
         "type": "object",

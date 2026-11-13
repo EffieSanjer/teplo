@@ -5,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.config import Settings
-from src.infrastructure.database import Item, Media, User, utcnow
+from src.infrastructure.database import Community, FriendSurpriseSpace, Item, Media, User, utcnow
 from src.modules.auth.service import Context
 from src.modules.communities.service import require_recipient
 from src.modules.gifts.schemas import ItemCreate, ItemInput, ItemOut
+from src.modules.users.access import friendship, require_visible_user
 
 
 def missing():
@@ -18,21 +19,56 @@ def missing():
 def require_list(db: Session, ctx: Context, recipient_id: str, list_type: str, settings: Settings):
     if list_type == "surprise" and recipient_id == ctx.user.id:
         missing()
-    require_recipient(db, recipient_id, ctx.community_id, settings)
+    if list_type == "surprise":
+        if not friendship(db, ctx.user.id, recipient_id):
+            require_recipient(db, recipient_id, ctx.community_id, settings)
+    else:
+        require_visible_user(db, ctx.user.id, recipient_id, ctx.community_id, settings)
 
 
 def accessible(db: Session, ctx: Context, item: Item, settings: Settings) -> bool:
-    if item.list_type == "surprise" and (
-        item.recipient_id == ctx.user.id or item.community_id != ctx.community_id
-    ):
-        return False
+    if item.list_type == "surprise":
+        if item.recipient_id == ctx.user.id:
+            return False
+        space = db.get(FriendSurpriseSpace, item.recipient_id)
+        if space and space.community_id == item.community_id:
+            # Only direct friends of the recipient; never friends of the author.
+            return bool(friendship(db, ctx.user.id, item.recipient_id))
+        if item.community_id != ctx.community_id:
+            return False
+        # Friendship must never bypass an existing group's membership checks.
+        try:
+            require_recipient(db, item.recipient_id, ctx.community_id, settings)
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                return False
+            raise
+        return True
     try:
-        require_recipient(db, item.recipient_id, ctx.community_id, settings)
+        require_list(db, ctx, item.recipient_id, item.list_type, settings)
     except HTTPException as exc:
         if exc.status_code == 404:
             return False
         raise
     return True
+
+
+def surprise_space(db: Session, ctx: Context, recipient_id: str, create: bool = False) -> str | None:
+    # Explicit friendship uses a separate shared list, not either user's personal
+    # workspace or a Telegram group. Existing group records are never migrated.
+    if not friendship(db, ctx.user.id, recipient_id):
+        return ctx.community_id
+    if create:
+        db.scalar(select(User).where(User.id == recipient_id).with_for_update())
+    space = db.get(FriendSurpriseSpace, recipient_id)
+    if not space and create:
+        community = Community(name="Сюрпризы друзей")
+        db.add(community)
+        db.flush()
+        space = FriendSurpriseSpace(recipient_id=recipient_id, community_id=community.id)
+        db.add(space)
+        db.flush()
+    return space.community_id if space else None
 
 
 def get_item(db: Session, ctx: Context, item_id: str, settings: Settings, manage: bool = False) -> Item:
@@ -69,7 +105,7 @@ def create_item(db: Session, ctx: Context, body: ItemCreate, settings: Settings)
     item = Item(
         **body.model_dump(),
         author_id=ctx.user.id,
-        community_id=ctx.community_id if body.list_type == "surprise" else None,
+        community_id=surprise_space(db, ctx, body.recipient_id, create=True) if body.list_type == "surprise" else None,
     )
     db.add(item)
     db.commit()
@@ -93,6 +129,7 @@ def copy_as_surprise(db: Session, ctx: Context, item_id: str, settings: Settings
     source = get_item(db, ctx, item_id, settings)
     if source.list_type != "wishlist" or source.recipient_id == ctx.user.id or source.archived_at:
         missing()
+    require_list(db, ctx, source.recipient_id, "surprise", settings)
     # Media is shared safely: each read checks all linked records, not uploader identity.
     fields = {field: getattr(source, field) for field in ItemInput.model_fields}
     item = Item(
@@ -100,7 +137,7 @@ def copy_as_surprise(db: Session, ctx: Context, item_id: str, settings: Settings
         recipient_id=source.recipient_id,
         author_id=ctx.user.id,
         list_type="surprise",
-        community_id=ctx.community_id,
+        community_id=surprise_space(db, ctx, source.recipient_id, create=True),
     )
     db.add(item)
     db.commit()
@@ -112,7 +149,10 @@ def list_items(db: Session, ctx: Context, recipient_id: str, list_type: str, set
     require_list(db, ctx, recipient_id, list_type, settings)
     query = select(Item).where(Item.recipient_id == recipient_id, Item.list_type == list_type)
     if list_type == "surprise":
-        query = query.where(Item.community_id == ctx.community_id)
+        space_id = surprise_space(db, ctx, recipient_id)
+        if space_id is None:
+            return []
+        query = query.where(Item.community_id == space_id)
     return db.scalars(
         query.order_by(
             Item.archived_at.is_not(None),
