@@ -1,0 +1,102 @@
+/* Quiet variation: a personal notebook, not a uniform product catalogue. */
+:root {
+  --note-sage: #b6c5a92e;
+  --note-rose: #d6a39630;
+  --note-sand: #ead6a936;
+  --note-blue: #a9c7d632;
+  --dialog-paper: color-mix(in srgb, var(--paper) 35%, #f0f0e8);
+  --ambient-rose: #ba70621c;
+  --ambient-sage: #abc4a82e;
+  --ambient-blue: #99bbd338;
+}
+:root[data-theme='dark'] {
+  --note-sage: #7e9a6826;
+  --note-rose: #ac70662a;
+  --note-sand: #b6a06e24;
+  --note-blue: #7097af26;
+  --dialog-paper: color-mix(in srgb, var(--paper) 50%, #1d2523);
+  --ambient-rose: #a0584e16;
+  --ambient-sage: #79967016;
+  --ambient-blue: #5c83a022;
+}
+:root:root:root { --canvas-gradient: radial-gradient(ellipse at 8% 12%, var(--ambient-blue), transparent 52%), radial-gradient(ellipse at 90% 38%, var(--ambient-rose), transparent 48%), radial-gradient(ellipse at 25% 90%, var(--ambient-sage), transparent 55%), linear-gradient(145deg, var(--paper), color-mix(in srgb, var(--paper) 92%, #172d27)); }
+body::before {
+  background: radial-gradient(ellipse at 15% 20%, var(--ambient-blue), transparent 55%), radial-gradient(ellipse at 85% 70%, var(--ambient-rose), transparent 50%), url('../../assets/glass-grain.svg') repeat;
+  opacity: .65;
+}
+:root:root:root .app-shell .collection-tile .tile-note { --note-wash: var(--note-sage); background: linear-gradient(145deg, var(--note-wash), transparent 85%), var(--card-glass); }
+:root:root:root .app-shell .wish-note-1 .tile-note { --note-wash: var(--note-rose); }
+:root:root:root .app-shell .wish-note-2 .tile-note { --note-wash: var(--note-sand); }
+:root:root:root .app-shell .wish-note-3 .tile-note { --note-wash: var(--note-blue); }
+:root:root:root .app-shell .wish-note-1 .tile-note { min-height: 210px; }
+:root:root:root .app-shell .wish-note-2 .tile-note { min-height: 172px; }
+:root:root:root .app-shell .wish-note-2 .tile-note .tile-content {
+  background-image: repeating-linear-gradient(transparent 0 27px, color-mix(in srgb, var(--card-glass-ink) 7%, transparent) 27px 28px);
+  background-position: 0 12px;
+}
+:root:root:root .app-shell .wish-note-3 .tile-note::after { content: ''; position: absolute; top: 0; right: 0; width: 34px; height: 34px; background: linear-gradient(225deg, var(--glass-highlight), transparent 52%); pointer-events: none; }
+:root:root:root .app-shell .wish-note-1 .tile-note h3 { font-family: Georgia, serif; font-style: italic; font-size: 25px; letter-spacing: -.5px; }
+
+/* Keep the friends heading as a page heading rather than a second boxed toolbar. */
+:root:root:root .app-shell .friends-intro {
+  padding: 18px 4px 24px;
+  border: 0;
+  border-bottom: 1px solid var(--card-glass-edge);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root:root:root .app-shell .friends-intro .page-heading h1 { font-size: clamp(32px, 5vw, 42px); letter-spacing: -1.3px; }
+:root:root:root .app-shell .friends-intro > .collection-eyebrow { opacity: .5; }
+:root:root:root .app-shell .friends-directory .friend-profile:not(.prominent) { min-height: 206px; }
+:root:root:root .app-shell .friends-directory .friend-profile-actions { margin: 0; height: 0; }
+
+/* All dialogs share the same legible paper-glass surface and rounded controls. */
+:root:root:root .modal,
+:root:root:root .modal.item-detail:not(.detail-has-photo) {
+  border: 1px solid var(--card-glass-edge);
+  border-radius: 26px;
+  background: linear-gradient(145deg, var(--glass-highlight), transparent 60%), var(--dialog-paper);
+  color: var(--card-glass-ink);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 28px 90px #07110b30;
+}
+:root:root:root .modal::backdrop { background: #101c194d; backdrop-filter: blur(12px); }
+:root:root:root .modal:not(.item-detail) { inset: 0; margin: auto; width: min(560px, calc(100vw - 24px)); height: auto; min-height: 0; max-height: calc(100dvh - 32px); }
+:root:root:root .modal:not(.item-detail) .modal-inner { min-height: 0; height: auto; }
+:root:root:root .modal:not(.item-detail) .modal-header { padding: 22px 24px 16px; border-bottom: 1px solid var(--card-glass-edge); background: transparent; color: inherit; }
+:root:root:root .modal:not(.item-detail) .modal-header h2 { font-family: inherit; font-size: 23px; font-weight: 500; line-height: 1.3; letter-spacing: -.6px; }
+:root:root:root .modal .confirm-body,
+:root:root:root .modal .item-form { padding: 22px 24px 26px; color: inherit; }
+:root:root:root .modal .confirm-body { font-size: 14px; line-height: 1.75; }
+:root:root:root .modal .inline-hint { color: inherit; opacity: .65; }
+:root:root:root .modal :is(input, textarea, select, .input-with-icon) { background: var(--card-caption); color: var(--card-glass-ink); border: 1px solid var(--card-glass-edge); border-radius: 14px; box-shadow: none; }
+:root:root:root .modal .input-with-icon input { border: 0; background: transparent; }
+:root:root:root .modal :is(input, textarea)::placeholder { color: var(--card-glass-ink); opacity: .5; }
+:root:root:root .modal .type-switch { padding: 4px; border: 1px solid var(--card-glass-edge); border-radius: 18px; background: var(--card-caption); }
+:root:root:root .modal .type-switch button { border: 0; border-radius: 14px; background: transparent; color: inherit; }
+:root:root:root .modal .type-switch button.selected { background: var(--card-glass-ink); color: var(--dialog-paper); }
+:root:root:root .modal .form-actions { flex-wrap: wrap; border-top: 1px solid var(--card-glass-edge); padding-top: 18px; }
+:root:root:root .modal .form-actions .button { min-height: 44px; border-radius: 999px; }
+:root:root:root .modal.item-detail .detail-body,
+:root:root:root .modal.item-detail.detail-has-photo .detail-body,
+:root:root:root .modal.item-detail:not(.detail-has-photo) .detail-body { background: transparent; color: var(--card-glass-ink); box-shadow: none; border: 0; }
+:root:root:root .modal.item-detail:not(.detail-has-photo) .modal-header { background: transparent; color: inherit; }
+:root:root:root .modal.item-detail .detail-card-title,
+:root:root:root .modal.item-detail .detail-mobile-title { font-family: inherit; font-weight: 450; line-height: 1.25; letter-spacing: -.7px; }
+:root:root:root .modal.item-detail .detail-kicker { border: 0; padding: 0; border-radius: 0; background: transparent; color: inherit; font-size: 10px; letter-spacing: .7px; opacity: .6; }
+:root:root:root .modal.item-detail .detail-price { padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 16px; font-weight: 450; color: inherit; }
+:root:root:root .modal.item-detail .detail-price-row { border-top: 1px solid var(--card-glass-edge); padding-top: 16px; }
+:root:root:root .modal.item-detail .detail-description { color: inherit; font-size: 14px; line-height: 1.8; }
+:root:root:root .modal.item-detail .detail-note { padding: 18px; border-radius: 18px; background: var(--card-caption); }
+@media (max-width: 640px) {
+  :root:root:root .app-shell .friends-intro { padding: 12px 4px 22px; }
+  :root:root:root .app-shell .wish-note-1 .tile-note { min-height: 190px; }
+  :root:root:root .app-shell .wish-note-2 .tile-note { min-height: 156px; }
+  :root:root:root .app-shell .wish-note-1 .tile-note h3 { font-size: 22px; }
+  :root:root:root .modal:not(.item-detail) .modal-header { padding: 18px; }
+  :root:root:root .modal .confirm-body,
+  :root:root:root .modal .item-form { padding: 18px; }
+  :root:root:root .modal .type-switch button { font-size: 11px; padding-inline: 6px; }
+}

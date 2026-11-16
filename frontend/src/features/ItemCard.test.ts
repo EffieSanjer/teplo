@@ -10,6 +10,20 @@ const item: Item = {
 }
 
 describe('ItemCard', () => {
+  it('does not show empty prices, author fields or a blank footer', () => {
+    const wrapper = mount(ItemCard, { props: { item: { ...item, price: null, currency: null }, index: 0 } })
+    expect(wrapper.find('.card-bottom').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Бесценно')
+  })
+  it('omits an empty title instead of inventing visible text', () => {
+    const wrapper = mount(ItemCard, { props: { item: { ...item, title: ' ', url: null, price: null, currency: null }, index: 0 } })
+    expect(wrapper.find('h3').exists()).toBe(false)
+    expect(wrapper.find('.card-body').exists()).toBe(false)
+  })
+  it('shows a zero price when supplied', () => {
+    const wrapper = mount(ItemCard, { props: { item: { ...item, price: '0' }, index: 0 } })
+    expect(wrapper.get('.card-bottom strong').text()).toContain('0')
+  })
   it('opens active cards', async () => {
     const wrapper = mount(ItemCard, { props: { item, index: 0 } })
     await wrapper.get('.card-open').trigger('click')

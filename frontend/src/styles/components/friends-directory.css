@@ -1,0 +1,82 @@
+/* Directory finishing layer, sharing the wish cards' glass materials. */
+:root:root:root .app-shell .friends-page { padding: 24px 16px calc(120px + env(safe-area-inset-bottom)); }
+:root:root:root .app-shell .friends-layout { gap: 24px; }
+:root:root:root .app-shell .friends-intro {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 24px;
+  padding: 28px;
+  background: var(--card-finish), var(--card-glass);
+  border: 1px solid var(--card-glass-edge);
+  color: var(--card-glass-ink);
+}
+:root:root:root .app-shell .friends-intro > .collection-eyebrow {
+  display: block;
+  grid-column: 1 / -1;
+  color: inherit;
+  opacity: .6;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+:root:root:root .app-shell .friends-intro .page-heading { grid-column: 1; grid-row: 2; min-width: 0; }
+:root:root:root .app-shell .friends-intro .page-heading h1 { font-family: inherit; font-size: 32px; font-weight: 500; }
+:root:root:root .app-shell .friends-intro .friends-intro-copy { grid-column: 1; grid-row: 3; margin: 0; max-width: 320px; font-size: 13px; }
+:root:root:root .app-shell .friends-intro .friend-invite-action {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 44px;
+  border-radius: 999px;
+  background: #15151530;
+  color: #fff;
+  border: 1px solid #ffffff40;
+  font-size: 12px;
+}
+:root:root:root .app-shell .friends-intro .received-invite { grid-column: 2; grid-row: 3; justify-self: center; min-height: 32px; font-size: 12px; }
+:root:root:root .app-shell .friends-directory { min-width: 0; color: var(--card-glass-ink); }
+:root:root:root .app-shell .friends-directory .friends-toolbar { display: flex; gap: 12px; margin-bottom: 18px; padding: 0; }
+:root:root:root .app-shell .friends-toolbar .search-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--card-glass-edge);
+  border-radius: 999px;
+  background: var(--card-glass);
+  color: inherit;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(18px);
+}
+:root:root:root .app-shell .friends-toolbar .search-input:focus-within { outline: 2px solid var(--card-glass-ink); outline-offset: 2px; }
+:root:root:root .app-shell .friends-toolbar input { min-width: 0; width: 100%; padding: 10px 0; border: 0; border-radius: 0; background: transparent; color: inherit; outline: none; box-shadow: none; font-size: 14px; }
+:root:root:root .app-shell .friends-toolbar input::placeholder { color: inherit; opacity: .6; }
+:root:root:root .app-shell .friends-toolbar input::-webkit-search-cancel-button { -webkit-appearance: none; }
+:root:root:root .app-shell .friends-toolbar .search-clear { display: grid; place-items: center; flex: none; width: 32px; height: 36px; padding: 0; border: 0; background: transparent; color: inherit; }
+:root:root:root .app-shell .directory-count { flex: none; color: inherit; opacity: .65; font-size: 12px; }
+:root:root:root .app-shell .friends-directory .friends-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+:root:root:root .app-shell .friends-directory .friend-profile:not(.prominent) { gap: 12px; min-height: 228px; padding: 30px 18px 22px; background: var(--card-finish), var(--card-glass); }
+:root:root:root .app-shell .friends-directory .profile-avatar { flex: none; width: 88px; height: 88px; }
+:root:root:root .app-shell .friends-directory .friend-profile h3 { width: 100%; text-align: center; font-family: inherit; font-weight: 500; font-size: 16px; line-height: 1.4; }
+:root:root:root .app-shell .friends-directory .friend-profile-caption { margin: 0; font-size: 11px; color: inherit; opacity: .6; }
+:root:root:root .app-shell .friends-directory .friend-profile-actions { position: static; width: 100%; margin: auto 0 0; transform: none; }
+:root:root:root .app-shell .friends-directory .friend-remove { position: absolute; top: 8px; right: 8px; width: 36px; min-height: 36px; border-radius: 50%; opacity: .65; }
+:root:root:root .app-shell .friends-directory .friend-remove:hover { background: var(--card-caption); opacity: 1; }
+:root:root:root .app-shell .friends-directory .friend-visit { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--card-glass-edge); border-radius: 50%; background: var(--card-caption); }
+:root:root:root .app-shell .friends-directory .empty-state { margin: 0; padding: 48px 24px; border: 1px solid var(--card-glass-edge); border-radius: 24px; background: var(--card-finish), var(--card-glass); color: inherit; }
+:root:root:root .app-shell .friends-directory .empty-state p { max-width: 420px; color: inherit; opacity: .7; }
+:root:root:root .app-shell .friends-refresh-error { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 14px; border: 1px solid var(--card-glass-edge); border-radius: 18px; font-size: 12px; }
+:root:root:root .app-shell .friends-refresh-error p { flex: 1; }
+:root:root:root .app-shell .friends-directory .friend-skeleton { height: 228px; border-radius: 24px; }
+@media (max-width: 640px) {
+  :root:root:root .app-shell .friends-page { padding: 12px 12px calc(120px + env(safe-area-inset-bottom)); }
+  :root:root:root .app-shell .friends-intro { grid-template-columns: minmax(0, 1fr); padding: 22px; gap: 14px; }
+  :root:root:root .app-shell .friends-intro .friends-intro-copy { grid-column: 1; grid-row: 3; }
+  :root:root:root .app-shell .friends-intro .friend-invite-action { grid-column: 1; grid-row: 4; width: 100%; margin-top: 4px; }
+  :root:root:root .app-shell .friends-intro .received-invite { grid-column: 1; grid-row: 5; }
+  :root:root:root .app-shell .friends-directory .friends-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  :root:root:root .app-shell .friends-directory .friend-profile:not(.prominent) { padding: 32px 12px 18px; min-height: 216px; }
+  :root:root:root .app-shell .friends-directory .profile-avatar { width: 72px; height: 72px; }
+  :root:root:root .app-shell .friends-directory .friend-profile h3 { font-size: 14px; }
+  :root:root:root .app-shell .friends-toolbar .directory-count { display: none; }
+}

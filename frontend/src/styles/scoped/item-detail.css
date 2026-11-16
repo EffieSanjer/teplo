@@ -1,0 +1,2 @@
+.detail-art img { min-width: 0; min-height: 0; }
+.detail-art:has(.site-icon) { height: 128px; }

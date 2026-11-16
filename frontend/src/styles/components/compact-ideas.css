@@ -1,0 +1,20 @@
+/* Compact ideas retain a recognisable symbol, without a large empty art area. */
+:root .app-shell .collection-tile .tile-note {
+  min-height: 76px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+}
+:root .app-shell .collection-tile .tile-note-symbol {
+  display: grid;
+  flex: none;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  margin: 0 0 0 14px;
+  filter: none;
+  color: var(--ink);
+}
+:root .app-shell .tile-note-symbol svg { width: 25px; height: 25px; }
+:root .app-shell .collection-tile .tile-note .tile-content { flex: 1; min-width: 0; }

@@ -48,11 +48,4 @@ onBeforeUnmount(() => {
   <div ref="grid" class="cards-grid masonry-grid"><slot /></div>
 </template>
 
-<style scoped>
-.masonry-grid {
-  grid-auto-rows: 1px;
-  grid-auto-flow: dense;
-  row-gap: 0;
-  align-items: start;
-}
-</style>
+<style scoped src="../styles/scoped/masonry-grid.css"></style>

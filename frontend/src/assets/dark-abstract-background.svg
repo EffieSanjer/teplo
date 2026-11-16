@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" fill="none">
+  <defs>
+    <linearGradient id="rust" x1="-80" y1="1100" x2="850" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151515"/>
+      <stop offset=".42" stop-color="#c2442a" stop-opacity=".88"/>
+      <stop offset="1" stop-color="#151515" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="olive" x1="1500" y1="1280" x2="800" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151515"/>
+      <stop offset=".45" stop-color="#4b5839"/>
+      <stop offset="1" stop-color="#151515" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="500" y1="1200" x2="1000" y2="580" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#151515"/>
+      <stop offset=".52" stop-color="#151515" stop-opacity=".94"/>
+      <stop offset="1" stop-color="#151515" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="800" y1="0" x2="800" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop offset=".16" stop-color="#151515" stop-opacity=".18"/>
+      <stop offset=".58" stop-color="#151515" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#151515" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="blur" x="-40%" y="-60%" width="180%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="48"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-40%" width="160%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+  <path fill="#151515" d="M0 0h1600v1200H0z"/>
+  <g filter="url(#blur)">
+    <ellipse cx="180" cy="190" rx="460" ry="290" fill="#c2442a" fill-opacity=".65" transform="rotate(-28 180 190)"/>
+    <ellipse cx="1310" cy="220" rx="510" ry="330" fill="#4b5839" fill-opacity=".85" transform="rotate(25 1310 220)"/>
+    <path fill="#c2442a" fill-opacity=".38" d="M1770 280c-340-80-280 450-660 350-140-36-230-11-290 120 280-80 260 220 560 60 270-144 224-210 390-190V280Z"/>
+    <ellipse cx="260" cy="700" rx="330" ry="180" fill="#4b5839" fill-opacity=".42" transform="rotate(-35 260 700)"/>
+    <path fill="url(#rust)" d="M-240 1240C-100 940-100 698 191 681c206-12 235 124 429 84 228-47 157-301 381-366-60 204 18 408-199 550-192 126-245 86-316 291H-240Z"/>
+    <path fill="url(#olive)" d="M1740 1270c-155-191-96-488-314-598-237-119-269 170-482 156-153-10-183-162-313-122 77 79 109 230 256 303 199 99 213 110 272 261h581Z"/>
+  </g>
+  <path fill="url(#fold)" filter="url(#soft)" d="M125 1250c111-215 244-205 433-310 180-100 218-214 350-310-47 196-182 268-246 412-31 70-25 132-43 208H125Z"/>
+  <path stroke="#c2442a" stroke-opacity=".13" stroke-width="2" d="M-100 1000c140-263 321-122 526-158 207-36 307-223 382-333"/>
+  <path stroke="#4b5839" stroke-opacity=".25" stroke-width="2" d="M1710 1020c-191-83-177-355-367-335-170 18-193 201-372 188"/>
+  <path fill="url(#shade)" d="M0 0h1600v1200H0z"/>
+</svg>

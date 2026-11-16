@@ -1,0 +1,65 @@
+@media (max-width: 900px) {
+  .app-shell { padding: 20px; }
+  .app-shell .main-content { min-height: calc(100dvh - 40px); }
+  .app-shell .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .app-shell { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top)); }
+  .app-shell .main-content { min-height: calc(100dvh - 16px - env(safe-area-inset-top)); padding: 5px; border: 1px solid var(--material-edge); border-radius: 40px; }
+  .app-shell .topbar { min-height: 54px; margin: 0 16px; padding: 4px 0; gap: 10px; }
+  .app-shell .topbar .brand { font-size: 24px; }
+  .app-shell .appearance-control .theme-control { width: 34px; height: 34px; }
+  .app-shell .page { padding: 0 0 calc(100px + env(safe-area-inset-bottom)); }
+  .app-shell .personal-intro, .app-shell .wishlist-page > .friend-profile.prominent { border-radius: 34px; margin-bottom: 10px; }
+  .app-shell .personal-panel { padding: 24px 18px 22px; }
+  .app-shell .personal-identity { grid-template-columns: minmax(44px, 1fr) 104px minmax(44px, 1fr); gap: 16px; }
+  .app-shell .personal-avatar, .app-shell .friend-profile.prominent .profile-avatar { width: 104px; height: 104px; }
+  .profile-stat strong { font-size: 21px; }
+  .profile-stat span { font-size: 9px; }
+  .app-shell .personal-name { margin-top: 16px; }
+  .app-shell .personal-name p { font-size: 18px; }
+  .app-shell .personal-heading { margin-top: 7px; }
+  .app-shell .personal-heading h1 { font-size: 11px; letter-spacing: 0; }
+  .app-shell .personal-heading p { font-size: 10px; }
+  .app-shell .personal-add { min-height: 42px; width: 100%; max-width: 300px; margin-top: 18px; padding: 10px 16px; }
+  .app-shell .personal-add > span { display: inline; }
+  .app-shell .wishlist-page > .friend-profile.prominent { grid-template-columns: minmax(44px, 1fr) 104px minmax(44px, 1fr); gap: 0 16px; padding: 24px 18px 22px; margin-inline: 0; }
+  .app-shell .friend-profile.prominent h1 { font-size: 18px; margin-top: 16px; }
+  .app-shell .friend-profile.prominent .friend-profile-caption { font-size: 10px; margin-top: 8px; }
+  .app-shell .friend-profile.prominent .friend-profile-actions { margin-top: 18px; width: 300px; gap: 8px; }
+  .app-shell .friend-profile.prominent .friend-profile-actions a { min-height: 42px; padding: 9px 10px; font-size: 11px; gap: 6px; }
+  .app-shell .wishlist-content { padding: 0 2px; }
+  .app-shell .personal-section-heading { padding: 10px 8px 8px; margin-bottom: 8px; }
+  .app-shell .personal-section-heading h2 { font-size: 14px; }
+  .app-shell .certificates-section { margin: 0 4px 12px; }
+  .app-shell .cards-grid.masonry-grid { column-gap: 8px; }
+  .app-shell .mobile-nav { bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .app-shell .friends-page { padding: 14px 8px calc(100px + env(safe-area-inset-bottom)); }
+  .app-shell .friends-toolbar { padding: 0 4px; }
+  .app-shell .friends-grid { gap: 10px; }
+  .app-shell .friend-profile:not(.prominent) { border-radius: 30px; }
+  .modal.item-detail, .modal.item-detail:not(.detail-has-photo) { width: calc(100vw - 20px); max-width: calc(100vw - 20px); max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); padding: 6px; border-width: 1px; border-radius: 40px; }
+  .modal.item-detail .modal-inner, .modal.item-detail.detail-portrait .modal-inner { border-radius: 33px; }
+  .modal.item-detail .detail-art, .modal.item-detail.detail-portrait .detail-art { border-radius: 33px; }
+  .modal.item-detail .detail-art img, .modal.item-detail.detail-portrait .detail-art img { max-height: 53dvh; min-height: 200px; }
+  .modal.item-detail .detail-body, .modal.item-detail.detail-has-photo .detail-body, .modal.item-detail.detail-portrait .detail-body { padding: 18px 16px 22px; }
+  .modal.item-detail:not(.detail-has-photo) .detail-body { padding: 68px 16px 22px; }
+  .modal.item-detail .detail-photo-caption { inset-inline: 22px; bottom: 24px; }
+  .modal.item-detail .detail-mobile-title { font-size: 29px; letter-spacing: -.9px; }
+  .modal.item-detail .detail-heading { padding: 14px 16px; }
+  .modal.item-detail .detail-price { font-size: 18px; }
+  .modal.item-detail .detail-actions .button { min-height: 46px; }
+  .modal:not(.item-detail) { border-radius: 34px; }
+  .modal:not(.item-detail) .modal-header { padding: 20px 20px 8px; }
+  .modal .item-form { padding: 16px 20px 24px; }
+}
+@media (max-width: 350px) {
+  .app-shell { padding-inline: 5px; }
+  .app-shell .personal-identity, .app-shell .wishlist-page > .friend-profile.prominent { grid-template-columns: minmax(38px, 1fr) 88px minmax(38px, 1fr); column-gap: 10px; }
+  .app-shell .personal-avatar, .app-shell .friend-profile.prominent .profile-avatar { width: 88px; height: 88px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .modal::backdrop { backdrop-filter: none; background: #151515cc; }
+  .app-shell .mobile-nav { background: #111111; backdrop-filter: none; }
+  .modal.item-detail .modal-header .icon-button, .detail-photo-label { background: #303030; backdrop-filter: none; }
+}

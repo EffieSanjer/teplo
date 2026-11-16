@@ -1,0 +1,565 @@
+/* Shared finishing layer: quiet ambient canvas, glass cards and profile hierarchy. */
+:root {
+  --card-glass: #dae2d740;
+  --card-glass-ink: #202e2d;
+  --card-glass-edge: #ffffff40;
+  --card-caption: #f4f6ed24;
+  --ambient-light: #ffffff0c;
+  --ambient-shade: #15271f10;
+}
+:root[data-theme='dark'] {
+  --card-glass: #161d1ab3;
+  --card-glass-ink: #edf0e8;
+  --card-glass-edge: #ffffff24;
+  --card-caption: #ffffff08;
+  --ambient-light: #9ead9808;
+  --ambient-shade: #00000018;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 8% 30%, var(--ambient-light), transparent 55%),
+    radial-gradient(ellipse at 95% 80%, var(--ambient-shade), transparent 65%),
+    url('../../assets/glass-grain.svg') repeat;
+  opacity: .55;
+}
+:root:root:root .app-shell .brand,
+:root:root:root .app-shell .own-wishlist .profile-topbar .brand {
+  font-family: 'Unbounded', 'Golos Text', sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -1px;
+  padding: 8px 17px 10px;
+  border: 1px solid #ffffff40;
+  border-radius: 999px;
+  background: #15151530;
+  color: #fff;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transform: none;
+  text-shadow: none;
+  box-shadow: none;
+}
+:root:root:root .app-shell .brand-comma { color: #c84639; }
+
+:root:root:root .app-shell .collection-tile .tile-open,
+:root:root:root .app-shell .collection-tile .tile-note {
+  background: var(--card-glass);
+  color: var(--card-glass-ink);
+  border: 1px solid var(--card-glass-edge);
+  border-radius: 24px;
+  box-shadow: inset 0 1px 0 #ffffff14;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+:root:root:root .app-shell .collection-tile .tile-open .tile-content {
+  background: var(--card-caption);
+  border-radius: 18px;
+  color: inherit;
+}
+:root:root:root .app-shell .collection-tile .tile-note .tile-content { background: transparent; }
+:root:root:root .app-shell .collection-tile .tile-note {
+  background-image: radial-gradient(ellipse at 0 0, #ffffff10, transparent 70%);
+}
+:root:root:root .app-shell .collection-tile .tile-note h3 {
+  font-weight: 650;
+  text-transform: none;
+  font-size: clamp(19px, 4.8vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -.5px;
+}
+:root:root:root .app-shell .collection-tile .tile-open .tile-media { border-radius: 18px; }
+:root:root:root .app-shell .collection-tile .tile-price {
+  background: var(--card-caption);
+  border: 1px solid var(--card-glass-edge);
+  color: inherit;
+}
+
+/* Friend's profile: an intimate, centred identity above stats and tabs. */
+:root:root:root .app-shell .wishlist-sidebar > .friend-profile.prominent {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 18px 20px 22px;
+  border: 0;
+  border-radius: 28px;
+  background: transparent;
+  color: var(--card-glass-ink);
+  box-shadow: none;
+  overflow: hidden;
+}
+.friend-profile-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--paper)), var(--friend-photo);
+  background-position: center;
+  background-size: cover;
+  filter: blur(28px);
+  opacity: .22;
+  transform: scale(1.15);
+}
+:root:root:root .app-shell .friend-profile.prominent::before,
+:root:root:root .app-shell .friend-profile.prominent::after { content: none; }
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading {
+  order: -3;
+  width: 100%;
+  padding: 0;
+}
+:root:root:root .app-shell .friend-profile.prominent .back-link {
+  width: fit-content;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 16px;
+  background: var(--glass-fill);
+  color: inherit;
+}
+:root:root:root .app-shell .friend-profile.prominent .profile-avatar {
+  order: -2;
+  width: 72px;
+  height: 72px;
+  margin: 4px 0 0;
+  padding: 3px;
+  border: 1px solid var(--glass-edge);
+  outline: 0;
+  box-shadow: none;
+  background: var(--glass-fill);
+}
+:root:root:root .app-shell .friend-profile.prominent .profile-avatar img { filter: none; }
+:root:root:root .app-shell .friend-profile.prominent h1 {
+  order: -1;
+  flex: none;
+  margin: 0 0 6px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  text-align: center;
+  font-size: 23px;
+  font-weight: 600;
+}
+:root:root:root .app-shell .friend-profile.prominent .profile-stat {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+}
+:root:root:root .app-shell .friend-profile.prominent .profile-stat strong { font-size: 20px; font-weight: 550; color: inherit; }
+:root:root:root .app-shell .friend-profile.prominent .profile-stat span { font-size: 11px; color: inherit; opacity: .65; }
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-actions {
+  width: 100%;
+  max-width: 360px;
+  margin: 10px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--card-glass-edge);
+  gap: 8px;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-actions a { border-radius: 16px; }
+@media (max-width: 760px) {
+  :root:root:root .app-shell .wishlist-sidebar > .friend-profile.prominent { border-radius: 0 0 28px 28px; }
+}
+
+/* Keep profile geometry independent of legacy grid-area and flex-order rules. */
+:root:root:root .app-shell .main-content:has(.wishlist-page:not(.own-wishlist)) > .topbar { display: none; }
+:root:root:root .app-shell .wishlist-page:not(.own-wishlist) .collection-heading { display: none; }
+:root:root:root .app-shell .collection-tile .tile-media { min-height: 0; aspect-ratio: min(1, var(--tile-photo-ratio, 1)); }
+:root:root:root .app-shell .collection-tile .tile-media img:not(.site-icon) { height: 100%; width: 100%; object-fit: cover; }
+:root:root:root .app-shell .wishlist-sidebar > .friend-profile.prominent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr);
+  grid-template-rows: auto 90px auto auto;
+  justify-items: center;
+  gap: 16px 12px;
+  padding: 12px 18px 22px;
+  color: var(--card-glass-ink);
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-backdrop {
+  display: block;
+  z-index: 0;
+  background-image: linear-gradient(180deg, transparent, var(--paper)), var(--friend-photo);
+  opacity: .4;
+}
+:root:root:root .app-shell .friend-profile.prominent > :not(.friend-profile-backdrop) { position: relative; z-index: 1; order: 0; }
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading {
+  grid-area: 1 / 1 / 2 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading .back-link {
+  position: absolute;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+:root:root:root .app-shell .friend-profile.prominent .profile-avatar { grid-area: 2 / 2; margin: 0; }
+:root:root:root .app-shell .friend-profile.prominent .profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+}
+:root:root:root .app-shell .friend-profile.prominent .profile-stat-left { grid-area: 2 / 1; }
+:root:root:root .app-shell .friend-profile.prominent .profile-stat-right { grid-area: 2 / 3; }
+:root:root:root .app-shell .friend-profile.prominent h1 {
+  grid-area: 3 / 1 / 4 / -1;
+  justify-self: center;
+  margin: 0;
+  max-width: 100%;
+  font-family: 'Manrope', sans-serif;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-actions { grid-area: 4 / 1 / 5 / -1; margin: 0; }
+
+/* Portrait headers share a protected text surface and a seamless canvas edge. */
+:root {
+  --identity-surface: #e0e5d9d9;
+  --identity-ink: #18251f;
+}
+:root[data-theme='dark'] {
+  --identity-surface: #101713d9;
+  --identity-ink: #f4f6ed;
+}
+:root:root:root .app-shell .own-wishlist .personal-panel,
+:root:root:root .app-shell .own-wishlist .personal-panel.has-avatar-cover {
+  background: linear-gradient(180deg, var(--identity-surface), var(--paper));
+}
+:root:root:root .app-shell .own-wishlist .personal-name p,
+:root:root:root .app-shell .own-wishlist .personal-panel.has-avatar-cover .personal-name p,
+:root:root:root .app-shell .own-wishlist .personal-heading h1,
+:root:root:root .app-shell .own-wishlist .personal-heading p { color: var(--identity-ink); }
+:root:root:root .app-shell .wishlist-sidebar > .friend-profile.prominent {
+  background: linear-gradient(180deg, transparent 20%, var(--identity-surface) 62%, var(--paper));
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--identity-ink);
+  overflow: hidden;
+  padding-bottom: 28px;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-backdrop {
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(180deg, transparent 20%, var(--paper) 100%), var(--friend-photo);
+  background-position: center 35%;
+  background-size: cover;
+  filter: blur(5px);
+  opacity: .85;
+  transform: scale(1.04);
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading { margin-bottom: 52px; }
+:root:root:root .app-shell .friend-profile.prominent h1,
+:root:root:root .app-shell .friend-profile.prominent .profile-stat {
+  color: var(--identity-ink);
+  background: var(--identity-surface);
+  border: 1px solid var(--glass-edge);
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+:root:root:root .app-shell .friend-profile.prominent h1 { padding: 8px 16px; }
+:root:root:root .app-shell .friend-profile.prominent .profile-stat { padding: 10px 12px; }
+:root:root:root .app-shell .friend-profile.prominent .profile-stat span { opacity: .85; }
+:root:root:root .app-shell .friend-profile.prominent .back-link {
+  background: var(--identity-surface);
+  color: var(--identity-ink);
+}
+@media (max-width: 760px) {
+  :root:root:root .app-shell .wishlist-sidebar > .friend-profile.prominent {
+    width: calc(100% + 16px);
+    margin-inline: -8px;
+    border-radius: 0;
+  }
+}
+
+/* Contrast is chosen from the sampled portrait; no separate text pills. */
+:root:root:root .app-shell .friend-profile.prominent h1,
+:root:root:root .app-shell .friend-profile.prominent .profile-stat {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--contrast-ink, var(--identity-ink));
+  padding: 0;
+  text-shadow: 0 1px 10px #00000012;
+}
+:root:root:root .app-shell .own-wishlist .personal-panel,
+:root:root:root .app-shell .own-wishlist .personal-panel.has-avatar-cover {
+  background: linear-gradient(180deg, var(--glass-fill), transparent 75%);
+}
+:root:root:root .app-shell .own-wishlist .personal-name p,
+:root:root:root .app-shell .own-wishlist .personal-panel.has-avatar-cover .personal-name p,
+:root:root:root .app-shell .own-wishlist .personal-heading h1,
+:root:root:root .app-shell .own-wishlist .personal-heading p {
+  color: var(--contrast-ink, var(--identity-ink));
+  text-shadow: 0 1px 10px #00000012;
+}
+:root:root:root .app-shell .wishlist-sidebar > .friend-profile.prominent { grid-template-columns: minmax(0, 1fr) 108px minmax(0, 1fr); grid-template-rows: auto 112px auto auto; }
+:root:root:root .app-shell .friend-profile.prominent .profile-avatar { width: 104px; height: 104px; }
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading { position: relative; padding-inline: 44px; }
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading .back-link {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--contrast-ink, var(--identity-ink));
+}
+:root:root:root .app-shell .friend-profile.prominent .profile-stat strong { font-variant-numeric: tabular-nums; min-width: 3ch; }
+
+/* Vermilion is the action accent; readable controls don't inherit photo ink. */
+:root:root:root {
+  --accent: #c84639;
+  --accent-hover: #ae352b;
+  --on-accent: #fff8f3;
+  --glass-active: #c84639;
+  --glass-on-active: #fff8f3;
+  --warm: #c84639;
+  --warm-action: #c84639;
+  --warm-hover: #ae352b;
+}
+:root {
+  --readable-control: #e6e9dfc9;
+  --readable-control-ink: #18231f;
+}
+:root[data-theme='dark'] {
+  --readable-control: #17201bd9;
+  --readable-control-ink: #f5f6ef;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  padding-inline: 0;
+  margin-bottom: 68px;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading .brand {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  white-space: nowrap;
+  width: max-content;
+}
+:root:root:root .app-shell .friend-profile.prominent h1 { margin-top: 12px; }
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-actions {
+  margin-top: 14px;
+  padding-top: 24px;
+}
+:root:root:root .app-shell :is(.button, .icon-button, .theme-control, .collection-add, .certificate-carousel-add, .friend-profile-actions a, .back-link),
+:root:root:root .modal :is(.button, .icon-button, .type-switch button),
+:root:root:root .app-shell .own-wishlist .profile-topbar .theme-control,
+:root:root:root .app-shell .own-wishlist .profile-cover-add {
+  background: var(--readable-control);
+  color: var(--readable-control-ink);
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading .back-link {
+  background: transparent;
+  color: var(--contrast-ink, var(--readable-control-ink));
+}
+:root:root:root :is(.app-shell, .modal) :is(button, a):is(.active, .selected, .current, [aria-pressed='true']),
+:root:root:root .app-shell :is(.main-nav, .mobile-nav) a.current,
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-actions a.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+}
+:root:root:root .app-shell .wishlist-page .collection-heading,
+:root:root:root .app-shell .wishlist-page .collection-archive,
+:root:root:root .app-shell .wishlist-page .empty-state {
+  color: var(--page-contrast-ink, var(--readable-control-ink));
+}
+:root:root:root .app-shell .wishlist-page .empty-state p { color: inherit; opacity: .85; }
+
+/* Reset inherited offsets on the heading itself, not just its wordmark. */
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading {
+  inset: auto;
+  width: 100%;
+  justify-self: stretch;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading .back-link { left: -10px; }
+:root:root:root .app-shell .friend-profile.prominent h1 { margin-top: -6px; }
+
+/* Friends directory follows the same portrait-tinted canvas and glass surfaces. */
+:root:root:root .app-shell .friends-page { padding: 8px 12px 100px; }
+:root:root:root .app-shell .friends-layout { display: grid; grid-template-columns: 1fr; gap: 22px; max-width: 960px; margin-inline: auto; }
+:root:root:root .app-shell .friends-intro {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px 12px;
+  padding: 22px 20px;
+  border-radius: 24px;
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-fill);
+  color: var(--readable-control-ink);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+:root:root:root .app-shell .friends-intro .page-heading { margin: 0; padding: 0; }
+:root:root:root .app-shell .friends-intro .page-heading h1 { font: 600 28px/1.2 'Manrope', sans-serif; letter-spacing: -.8px; color: inherit; }
+:root:root:root .app-shell .friends-intro .friends-intro-copy {
+  display: block;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: 12px;
+  color: inherit;
+  opacity: .8;
+  line-height: 1.6;
+}
+:root:root:root .app-shell .friends-intro .friend-invite-action {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 16px;
+  min-height: 42px;
+  padding: 10px 14px;
+}
+:root:root:root .app-shell .friends-intro .received-invite { justify-self: start; color: inherit; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
+:root:root:root .app-shell .friends-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+:root:root:root .app-shell .friends-directory .friend-profile:not(.prominent) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 14px 18px;
+  min-height: 194px;
+  border: 1px solid var(--card-glass-edge);
+  border-radius: 24px;
+  background: var(--card-glass);
+  color: var(--card-glass-ink);
+  text-align: center;
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+:root:root:root .app-shell .friends-directory .profile-avatar { width: 76px; height: 76px; padding: 3px; border: 1px solid var(--glass-edge); outline: 0; background: transparent; box-shadow: none; }
+:root:root:root .app-shell .friends-directory .profile-avatar img { filter: none; }
+:root:root:root .app-shell .friends-directory .friend-profile h3 { margin: 0; font: 600 15px/1.3 'Manrope', sans-serif; color: inherit; }
+:root:root:root .app-shell .friends-directory .friend-profile-actions { top: 10px; right: 10px; transform: none; }
+:root:root:root .app-shell .friends-directory .friend-remove { color: inherit; border: 0; background: transparent; opacity: .65; padding: 0; width: 28px; min-height: 28px; }
+@media (min-width: 760px) {
+  :root:root:root .app-shell .friends-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Tinted glass, a richer ambient canvas and a more compact friend identity. */
+:root {
+  --certificate-red-glass: #8d3028b8;
+  --card-finish: linear-gradient(145deg, #ffffff16, transparent 48%, #42282212);
+}
+:root[data-theme='dark'] {
+  --certificate-red-glass: #501c18b8;
+  --card-finish: linear-gradient(145deg, #ffffff09, transparent 48%, #00000024);
+}
+:root:not([data-theme='dark']) {
+  --readable-control: #878c89;
+  --glass-fill: #27362c24;
+}
+:root:root:root { --canvas-gradient: radial-gradient(ellipse at 0% 15%, #ffffff0b, transparent 55%), radial-gradient(ellipse at 100% 75%, #c846390a, transparent 60%), linear-gradient(145deg, var(--paper), color-mix(in srgb, var(--paper) 92%, #111b16)); }
+:root:root:root .app-shell .certificate-carousel {
+  background: linear-gradient(135deg, #f2a09224, transparent 55%, #300c1526), var(--certificate-red-glass);
+  border-color: #f1aaa650;
+  box-shadow: inset 0 1px 0 #ffd5ce40, 0 8px 24px #380c0c10;
+}
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-heading { margin-bottom: 48px; }
+:root:root:root .app-shell .friend-profile.prominent .profile-avatar { transform: translateY(-5px); }
+:root:root:root .app-shell .collection-tile .tile-open,
+:root:root:root .app-shell .collection-tile .tile-note {
+  background-image: var(--card-finish);
+  border-radius: 24px;
+  padding: 5px;
+  gap: 5px;
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 6px 20px #07110b0c;
+}
+:root:root:root .app-shell .collection-tile .tile-note h3 {
+  font-size: clamp(20px, 4.8vw, 28px);
+  font-weight: 600;
+  letter-spacing: -.7px;
+}
+:root:root:root .app-shell .collection-tile .tile-kind,
+:root:root:root .app-shell .collection-tile .tile-kind-icon {
+  background: var(--readable-control);
+  color: var(--readable-control-ink);
+  border: 1px solid var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+:root:root:root .app-shell .collection-tile .tile-open .tile-content {
+  padding: 10px 12px;
+  background: linear-gradient(135deg, var(--card-caption), transparent);
+}
+:root:root:root .app-shell .collection-tile .tile-note .tile-content { padding: 18px 12px; }
+:root:root:root .app-shell .collection-tile .tile-price {
+  padding: 5px 10px;
+  font-size: 11px;
+  border-color: var(--glass-edge);
+}
+:root:root:root .app-shell .friends-directory .friend-profile:not(.prominent) {
+  background-image: var(--card-finish);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 6px 20px #07110b0c;
+}
+
+/* Controls repeat the wordmark's light, smoked-glass treatment. */
+:root:root:root .app-shell :is(.button, .icon-button, .theme-control, .collection-add, .certificate-carousel-add, .friend-profile-actions a),
+:root:root:root .modal :is(.button, .icon-button, .type-switch button),
+:root:root:root .app-shell .own-wishlist .profile-topbar .theme-control,
+:root:root:root .app-shell .own-wishlist .profile-cover-add {
+  background: #15151530;
+  color: #fff;
+  border: 1px solid #ffffff40;
+  box-shadow: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Type badges share one inset, whether placed on a photo or a text card. */
+:root:root:root .app-shell .collection-tile .tile-open { position: relative; }
+:root:root:root .app-shell .collection-tile .tile-kind,
+:root:root:root .app-shell .collection-tile .tile-kind-icon,
+:root:root:root .app-shell .collection-tile .tile-note .tile-kind {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  margin: 0;
+  z-index: 2;
+  background: #15151530;
+  color: #fff;
+  border: 1px solid #ffffff40;
+  box-shadow: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+:root:root:root .app-shell .collection-tile .tile-note .tile-content { padding-top: 42px; }
+:root:root:root .app-shell :is(.button, .icon-button, .theme-control):hover,
+:root:root:root .modal :is(.button, .icon-button):hover {
+  background: #15151550;
+}
+:root:root:root :is(.app-shell, .modal) :is(button, a):is(.active, .selected, .current, [aria-pressed='true']),
+:root:root:root .app-shell :is(.main-nav, .mobile-nav) a.current,
+:root:root:root .app-shell .friend-profile.prominent .friend-profile-actions a.active,
+:root:root:root .app-shell .friends-intro .friend-invite-action {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+}

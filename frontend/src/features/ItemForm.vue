@@ -178,8 +178,16 @@ async function save() {
 <template>
   <Modal :title="item ? 'Редактировать желание' : form.item_type === 'certificate' ? 'Магазин для сертификата' : listType === 'surprise' ? 'Маленький сюрприз' : 'Новое желание'" @close="!saving && emit('close')">
     <form class="item-form" @submit.prevent="save">
-      <p v-if="listType === 'surprise'" class="form-intro">Видят друзья, но не получатель.</p>
+      <p class="form-intro">{{ listType === 'surprise' ? 'Маленькая подсказка для друзей. Получатель её не увидит.' : 'Сохраните то, что хочется. Остальное можно добавить потом.' }}</p>
       <div class="type-switch"><button type="button" :class="{ selected: form.item_type === 'idea' }" :aria-pressed="form.item_type === 'idea'" @click="form.item_type = 'idea'"><Lightbulb :size="18" /><span>Идея<small>Пожелание</small></span></button><button type="button" :class="{ selected: form.item_type === 'gift' }" :aria-pressed="form.item_type === 'gift'" @click="form.item_type = 'gift'"><Gift :size="18" /><span>Подарок<small>Вещь или пост</small></span></button><button type="button" :class="{ selected: form.item_type === 'certificate' }" :aria-pressed="form.item_type === 'certificate'" @click="form.item_type = 'certificate'; autofillLink()"><Store :size="18" /><span>Сертификат<small>Любимый магазин</small></span></button></div>
+      <section class="form-section identity-section" aria-label="Карточка желания">
+        <label>Название <span>{{ form.item_type === 'idea' ? '*' : 'необязательно' }}</span><input v-model="form.title" placeholder="Например, что-нибудь для рисования" :required="form.item_type === 'idea'" maxlength="200" /></label>
+      </section>
+      <section class="form-section source-section" :class="{ 'has-error': sourceError }" aria-label="Ссылка и автозаполнение">
+        <label>{{ form.item_type === 'certificate' ? 'Ссылка на магазин' : 'Ссылка' }} <span>{{ form.item_type !== 'idea' ? '*' : 'необязательно' }}</span><div class="input-with-icon"><Link :size="17" /><input v-model="form.url" type="url" placeholder="https://магазин.ru/тот-самый-подарок" :required="form.item_type !== 'idea'" maxlength="2048" aria-describedby="source-link-hint" :aria-invalid="!!sourceError" :disabled="uploading || saving" @paste="pasteLink" @blur="autofillLink()" /></div></label>
+        <p id="source-link-hint" ref="sourceFeedback" class="description-hint source-link-hint" :class="{ 'field-error': sourceError }" :role="sourceError ? 'alert' : sourceHint ? 'status' : undefined">{{ sourceError || sourceHint || (form.item_type === 'certificate' ? 'Ссылка на сайт магазина.' : 'Вставьте из «Поделиться», можно вместе с текстом.') }}</p>
+        <button v-if="form.url" type="button" class="metadata-button" :disabled="fetching || uploading || saving" @click="metadata"><LoaderCircle v-if="fetching" :size="15" class="spin" /><Sparkles v-else :size="15" />{{ fetching ? 'Ищем подробности…' : form.item_type === 'certificate' ? 'Обновить название и фото' : 'Подтянуть название, цену и фото' }}</button>
+      </section>
       <section class="photo-section" aria-label="Фотография">
         <div class="upload-area" :class="{ 'has-photo': form.image_id }"><WishImage v-if="form.image_id" :src="imageUrl(form.image_id)" :is-icon="form.image_id === iconImageId" alt="Фотография подарка" /><button type="button" class="upload-button" :disabled="uploading || fetching || saving" @click="fileInput?.click()"><LoaderCircle v-if="uploading" :size="22" class="spin" /><ImagePlus v-else-if="!form.image_id" :size="22" /><span>{{ uploading ? 'Загружаем…' : form.image_id ? 'Заменить фото' : form.item_type === 'certificate' ? 'Добавить фото магазина' : 'Добавить фото' }}<small ref="photoFeedback" :class="{ 'field-error': photoError }" :role="photoError ? 'alert' : undefined">{{ photoError || (form.image_id ? 'Выбрать другой файл · до 5 МБ' : 'Необязательно · до 5 МБ') }}</small></span></button><button v-if="form.image_id" type="button" class="icon-button remove-image" :disabled="uploading || fetching || saving" aria-label="Убрать фото" @click="form.image_id = null"><X :size="16" /></button><input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp" hidden @change="upload" /></div>
         <details class="photo-url-details"><summary>Или загрузить фото по прямой ссылке</summary><div class="photo-url-area">
@@ -187,14 +195,6 @@ async function save() {
           <div class="photo-url-row"><input id="photo-url" v-model="photoUrl" type="text" inputmode="url" maxlength="2048" placeholder="https://сайт.ru/photo.jpg" aria-describedby="photo-url-hint" :aria-invalid="!!photoUrlError" :disabled="uploading || saving" @keydown.enter.prevent="uploadFromUrl" /><button type="button" class="button secondary" :disabled="!photoUrl.trim() || uploading || fetching || saving" @click="uploadFromUrl"><LoaderCircle v-if="uploading" :size="16" class="spin" /><Link v-else :size="16" />Загрузить фото</button></div>
           <p id="photo-url-hint" ref="photoUrlFeedback" class="description-hint" :class="{ 'field-error': photoUrlError }" :role="photoUrlError ? 'alert' : undefined">{{ photoUrlError || 'JPEG, PNG или WebP · до 5 МБ' }}</p>
         </div></details>
-      </section>
-      <section class="form-section source-section" :class="{ 'has-error': sourceError }" aria-label="Ссылка и автозаполнение">
-        <label>{{ form.item_type === 'certificate' ? 'Ссылка на магазин' : 'Ссылка' }} <span>{{ form.item_type !== 'idea' ? '*' : 'необязательно' }}</span><div class="input-with-icon"><Link :size="17" /><input v-model="form.url" type="url" placeholder="https://магазин.ru/тот-самый-подарок" :required="form.item_type !== 'idea'" maxlength="2048" aria-describedby="source-link-hint" :aria-invalid="!!sourceError" :disabled="uploading || saving" @paste="pasteLink" @blur="autofillLink()" /></div></label>
-        <p id="source-link-hint" ref="sourceFeedback" class="description-hint source-link-hint" :class="{ 'field-error': sourceError }" :role="sourceError ? 'alert' : sourceHint ? 'status' : undefined">{{ sourceError || sourceHint || (form.item_type === 'certificate' ? 'Ссылка на сайт магазина.' : 'Вставьте из «Поделиться», можно вместе с текстом.') }}</p>
-        <button v-if="form.url" type="button" class="metadata-button" :disabled="fetching || uploading || saving" @click="metadata"><LoaderCircle v-if="fetching" :size="15" class="spin" /><Sparkles v-else :size="15" />{{ fetching ? 'Ищем подробности…' : form.item_type === 'certificate' ? 'Обновить название и фото' : 'Подтянуть название, цену и фото' }}</button>
-      </section>
-      <section class="form-section identity-section" aria-label="Карточка желания">
-        <label>Название <span>{{ form.item_type === 'idea' ? '*' : 'необязательно' }}</span><input v-model="form.title" placeholder="Например, что-нибудь для рисования" :required="form.item_type === 'idea'" maxlength="200" /></label>
       </section>
       <section class="form-section details-section" aria-label="Дополнительные сведения">
       <div class="personal-description">
@@ -216,60 +216,4 @@ async function save() {
   </Modal>
 </template>
 
-<style scoped>
-:global(.modal:has(.item-form)) { border-radius: 22px; }
-:global(.modal:has(.item-form) .modal-header) { border-bottom: 0; padding-bottom: 8px; }
-:global(.modal:has(.item-form) .modal-header .icon-button) { border-radius: 50%; }
-.item-form { --form-vivid: var(--accent); --form-on-vivid: var(--on-accent); padding-top: 12px; }
-.type-switch { gap: 3px; margin-bottom: 22px; }
-.type-switch button { justify-content: center; border: 0; border-radius: 9px; padding: 8px 5px; gap: 5px; font-size: 12px; background: var(--outline-art); color: var(--ink); }
-.type-switch button:hover:not(.selected) { background: var(--soft-accent); }
-.type-switch button:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
-.type-switch button.selected { background: var(--warm-soft); color: var(--warm-ink); box-shadow: none; font-weight: 600; }
-.type-switch button > svg { width: 15px; height: 15px; flex-shrink: 0; }
-.form-section { border: 0; background: none; padding: 0; margin-bottom: 20px; }
-.details-section { padding-top: 2px; }
-.item-form label { margin-bottom: 14px; }
-.item-form label > input, .item-form label > textarea, .item-form label > select { border: 1px solid var(--input-line); background: transparent; border-radius: 10px; }
-.item-form label > input:focus, .item-form label > textarea:focus, .item-form label > select:focus { border-color: var(--accent); }
-.source-section .input-with-icon { border: 1px solid var(--input-line); background: transparent; border-radius: 10px; padding-left: 12px; color: var(--muted); }
-.source-section .input-with-icon input { background: transparent; padding-block: 14px; }
-.source-section .input-with-icon:focus-within { border-color: var(--accent); }
-.source-section.has-error .input-with-icon { border-color: var(--error-line); }
-.identity-section > label > input { font-weight: 550; }
-.photo-section .upload-area { border: 0; background: none; padding: 0; min-height: 56px; gap: 12px; }
-.photo-section .upload-button { min-height: 52px; }
-.photo-section .upload-button > svg { box-sizing: content-box; padding: 13px; border-radius: 14px; background: var(--warm-soft); color: var(--warm-ink); }
-.photo-section .upload-area > img { width: 52px; height: 52px; border-radius: 12px; background: var(--outline-art); }
-.photo-section .upload-area :deep(img.site-icon) { max-width: 52px; max-height: 52px; }
-.photo-url-details > summary { font-size: 11px; padding-top: 8px; }
-.price-field > label { margin-bottom: 7px; }
-.price-input-row { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--input-line); border-radius: 10px; }
-.price-input-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
-.price-input-row input, .price-input-row select { border: 0; background: transparent; box-shadow: none; min-width: 0; padding: 9px 7px; }
-.price-input-row input { flex: 1; width: 0; }
-.price-input-row select { width: 80px; flex-shrink: 0; padding-left: 4px; }
-.price-from { border-radius: 8px; min-width: 40px; min-height: 40px; background: transparent; color: var(--muted); font-size: 13px; }
-.price-from[aria-pressed='true'] { background: var(--form-vivid); color: var(--form-on-vivid); }
-.form-actions { position: sticky; bottom: -1px; z-index: 2; background: var(--surface); padding: 14px 0; margin-top: 0; margin-bottom: -17px; }
-.form-actions .primary { flex: 1; border-radius: 12px; min-height: 46px; background: var(--form-vivid); color: var(--form-on-vivid); }
-.form-actions .primary:hover:not(:disabled) { background: var(--accent-hover); }
-.form-actions .secondary { border: 0; background: none; color: var(--muted); }
-.form-section > .photo-section { margin-bottom: 0; }
-.form-section > .form-row > label { margin-bottom: 0; }
-.form-section .source-link-hint { margin-bottom: 0; }
-.form-section .metadata-button { margin-top: 6px; }
-.photo-url-area { margin-bottom: 17px; }
-.photo-url-area label { margin-bottom: 7px; }
-.photo-url-row { display: flex; gap: 8px; margin-bottom: 6px; }
-.photo-url-row input { flex: 1; min-width: 0; }
-.photo-url-row button { flex-shrink: 0; }
-@media (max-width: 440px) { .photo-url-row { flex-direction: column; } }
-.upload-area > img { object-fit: contain; object-position: center; flex-shrink: 0; }
-.personal-description { margin-bottom: 17px; }
-.personal-description label { margin-bottom: 6px; }
-.form-row { align-items: flex-end; }
-.description-hint { font-size: 12px; font-weight: 400; line-height: 1.7; color: var(--muted); }
-.description-hint.field-error, .upload-button small.field-error { color: var(--error-ink); }
-.photo-url-row input[aria-invalid='true'] { border-color: var(--error-line); }
-</style>
+<style scoped src="../styles/scoped/item-form.css"></style>

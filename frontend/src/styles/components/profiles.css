@@ -1,0 +1,39 @@
+/* Profile composition shared by your own list and friends' lists. */
+.app-shell .personal-intro, .app-shell .wishlist-page > .friend-profile.prominent { display: block; min-height: 0; margin: 0 0 14px; padding: 0; color: var(--profile-ink); border: 1px solid var(--profile-edge); border-radius: 42px; background: var(--profile-gradient); box-shadow: inset 0 1px 1px #ffffff29, 0 8px 18px #0000000d; }
+.app-shell .personal-panel { display: flex; align-items: center; margin: 0; padding: 30px 28px 26px; background: transparent; border: 0; border-radius: inherit; color: inherit; }
+.app-shell .personal-identity { display: grid; grid-template-columns: minmax(60px, 1fr) 116px minmax(60px, 1fr); width: min(100%, 430px); align-items: center; gap: 24px; margin: 0; }
+.app-shell .personal-avatar, .app-shell .friend-profile .profile-avatar { width: 116px; height: 116px; padding: 4px; border: 1px solid var(--profile-ink); outline: 1px solid var(--profile-edge); outline-offset: 3px; border-radius: 50%; background: #000000; box-shadow: 0 7px 20px #00000024; }
+.app-shell .personal-avatar img, .app-shell .friend-profile .profile-avatar img { filter: grayscale(1); }
+.app-shell .personal-avatar span, .app-shell .friend-profile .profile-avatar span { background: linear-gradient(135deg, #a0a0a0, #353535); color: #f5f5f5; font-size: 30px; font-weight: 400; }
+.profile-stat { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; min-width: 0; }
+.profile-stat strong { font-size: 24px; line-height: 1.2; font-weight: 450; letter-spacing: -.8px; }
+.profile-stat span { color: var(--profile-muted); font-size: 11px; line-height: 1.4; }
+.app-shell .personal-name { margin-top: 18px; text-align: center; }
+.app-shell .personal-name p { font-size: 20px; font-weight: 500; letter-spacing: -.5px; }
+.app-shell .personal-heading { margin: 8px 0 0; text-align: center; }
+.app-shell .personal-heading h1 { font-size: 12px; line-height: 1.4; letter-spacing: .2px; font-weight: 450; color: var(--profile-muted); }
+.app-shell .personal-heading p { max-width: none; margin: 4px 0 0; font-size: 11px; color: var(--profile-muted); }
+.app-shell .personal-add { width: min(100%, 340px); min-height: 44px; margin-top: 22px; padding: 10px 22px; justify-content: center; gap: 8px; border: 1px solid var(--profile-ink); background: transparent; color: var(--profile-ink); box-shadow: inset 0 1px 1px #ffffff24; font-size: 12px; }
+.app-shell .personal-add:hover { background: #ffffff16; opacity: 1; }
+.app-shell .wishlist-page > .friend-profile.prominent { display: grid; grid-template-columns: minmax(60px, 1fr) 116px minmax(60px, 1fr); align-items: center; justify-items: center; column-gap: 24px; padding: 30px max(28px, calc((100% - 430px) / 2)) 26px; text-align: center; }
+.app-shell .friend-profile.prominent .profile-avatar { grid-area: 1 / 2; }
+.app-shell .friend-profile.prominent .profile-stat-left { grid-area: 1 / 1; }
+.app-shell .friend-profile.prominent .profile-stat-right { grid-area: 1 / 3; }
+.app-shell .friend-profile.prominent h1 { grid-area: 2 / 1 / 3 / 4; font-size: 20px; font-weight: 500; letter-spacing: -.5px; margin: 18px 0 0; }
+.app-shell .friend-profile.prominent .friend-profile-caption { grid-area: 3 / 1 / 4 / 4; font-size: 11px; color: var(--profile-muted); opacity: 1; margin-top: 8px; }
+.app-shell .friend-profile.prominent .friend-profile-actions { grid-area: 4 / 1 / 5 / 4; margin-top: 22px; flex-wrap: nowrap; width: 340px; max-width: 100%; gap: 10px; }
+.app-shell .friend-profile-actions a, .app-shell .friend-profile-actions button { background: transparent; border: 1px solid currentColor; color: inherit; box-shadow: inset 0 1px 1px #ffffff24; font-weight: 450; }
+.app-shell .friend-profile.prominent .friend-profile-actions a { flex: 1; min-height: 44px; padding: 10px 16px; }
+.app-shell .friend-profile-actions a.active { background: #000000; color: #f2f2f2; border-color: #9d9d9d; }
+.app-shell .back-link { min-height: 40px; margin: 0 18px 8px; color: var(--ink); }
+.app-shell .wishlist-content { padding: 0 10px; }
+.app-shell .personal-section-heading { padding: 12px 8px 10px; margin: 0 0 10px; border: 0; }
+.app-shell .personal-section-heading h2 { font-size: 16px; font-weight: 500; letter-spacing: -.4px; }
+.app-shell .personal-section-heading > span { min-width: 22px; height: 22px; font-size: 10px; border-color: var(--input-line); }
+.app-shell .certificates-section { margin: 0 0 16px; }
+.app-shell .certificates-toggle, .app-shell .own-wishlist .certificates-toggle { min-height: 38px; padding: 0 14px; border: 1px solid var(--material-edge); background: var(--control-gradient); color: var(--ink); border-radius: 22px; box-shadow: inset 0 1px 1px #ffffff38; }
+.app-shell .certificates-toggle h2 { font-size: 11px; }
+.app-shell .certificates-toggle .count { color: var(--muted); }
+.app-shell .certificate-rail { padding-top: 10px; }
+.app-shell .cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.app-shell .cards-grid.masonry-grid { column-gap: 12px; }

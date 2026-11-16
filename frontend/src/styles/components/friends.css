@@ -1,0 +1,25 @@
+/* Compact invitations and whole-card friend links. */
+:root .app-shell .friends-layout { grid-template-columns: 1fr; gap: 14px; }
+:root .app-shell .friends-intro {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 18px 22px;
+  border-radius: 26px;
+  background: linear-gradient(125deg, #ffffff10, #ffffff02), var(--glass-tint);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+:root .app-shell .friends-intro > .collection-eyebrow,
+:root .app-shell .friends-intro-copy { display: none; }
+:root .app-shell .friends-intro .page-heading { margin: 0; }
+:root .app-shell .friends-intro .page-heading h1 { font-size: 26px; letter-spacing: -.8px; }
+:root .app-shell .friend-invite-action { width: auto; margin: 0; min-height: 38px; padding: 9px 14px; font-size: 11px; }
+:root .app-shell .friends-intro .received-invite { grid-column: 1 / -1; justify-self: end; margin: 0; }
+:root .app-shell .friends-directory .friend-profile:not(.prominent) { padding: 18px; padding-right: 54px; }
+:root .app-shell .friends-directory .friend-profile-actions { position: absolute; right: 12px; top: 50%; width: auto; margin: 0; transform: translateY(-50%); z-index: 2; }
+:root .app-shell .friends-directory .friend-remove { width: 30px; min-height: 30px; border: 0; box-shadow: none; opacity: .6; }
+:root .app-shell .friend-profile.prominent:has(.friend-profile-heading) { padding-top: 56px; }
+:root .app-shell .friend-profile-heading { position: absolute; top: 10px; left: 16px; width: auto; }
+:root .app-shell .friend-profile-heading .back-link { min-height: 30px; margin: 0; font-size: 11px; }

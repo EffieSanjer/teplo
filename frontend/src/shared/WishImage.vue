@@ -21,6 +21,4 @@ function loaded(event: Event) {
   <img :src="src" :class="{ 'site-icon': compact }" :style="iconStyle" @load="loaded" />
 </template>
 
-<style scoped>
-img.site-icon { object-fit: contain; object-position: center; flex-shrink: 0; }
-</style>
+<style scoped src="../styles/scoped/wish-image.css"></style>
