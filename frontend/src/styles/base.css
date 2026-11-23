@@ -1,0 +1,71 @@
+@layer base {
+  :root {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color-scheme: light;
+    --paper: #f3f0e9;
+    --surface: #faf8f2;
+    --ink: #293d32;
+    --muted: #72796b;
+    --accent: #354f40;
+    --on-accent: #faf7ee;
+    --line: #d7d4c9;
+    --focus-ring: #667c5526;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --paper: #202823;
+    --surface: #2b362e;
+    --ink: #ede9df;
+    --muted: #b3bcad;
+    --line: #475349;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  button,
+  summary,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid #927858;
+    outline-offset: 3px;
+  }
+
+  input,
+  textarea,
+  select {
+    @apply w-full rounded border border-line bg-surface px-3 py-3 text-base text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15 dark:border-[#475349] dark:bg-[#202823] dark:text-[#ede9df];
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  dialog {
+    color: inherit;
+  }
+}

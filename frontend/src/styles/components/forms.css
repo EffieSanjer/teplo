@@ -1,0 +1,79 @@
+/* Wish editor, photo upload and price controls. */
+@layer components {
+  .form-intro {
+    @apply mb-5 text-xs leading-relaxed text-muted;
+  }
+  .wish-editor-layout {
+    @apply grid gap-x-6 min-[641px]:grid-cols-[minmax(0,1fr)_220px];
+  }
+  .wish-editor-fields {
+    @apply min-w-0;
+  }
+  .form-section {
+    @apply mb-5;
+  }
+  .item-form label {
+    @apply block text-sm;
+  }
+  .item-form label > span {
+    @apply text-xs text-muted;
+  }
+  .item-form label > input,
+  .item-form label > textarea {
+    @apply mt-2;
+  }
+  .input-with-icon {
+    @apply mt-2 flex items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-[#202823];
+  }
+  .input-with-icon input {
+    @apply border-0 bg-transparent px-0 focus:ring-0;
+  }
+  .metadata-button {
+    @apply mt-3 flex items-center gap-2 text-xs text-forest dark:text-sand;
+  }
+  .photo-section {
+    @apply min-w-0;
+  }
+  .editor-section-label {
+    @apply mb-3 block;
+  }
+  .upload-area {
+    @apply relative flex min-h-24 items-center justify-center gap-3 rounded border border-dashed border-[#bfc6b3] bg-forest/5 p-3 min-[641px]:min-h-48 min-[641px]:flex-col;
+  }
+  .upload-area > img {
+    @apply h-20 w-20 object-contain min-[641px]:h-36 min-[641px]:w-full;
+  }
+  .upload-button {
+    @apply flex items-center gap-3 text-left text-sm;
+  }
+  .upload-button small {
+    @apply mt-1 block text-[10px] text-muted;
+  }
+  .remove-image {
+    @apply absolute right-1 top-1 size-7;
+  }
+  .photo-url-details {
+    @apply mt-3 text-xs text-muted;
+  }
+  .photo-url-area {
+    @apply mt-3 grid gap-2;
+  }
+  .photo-url-row {
+    @apply mt-2 flex flex-wrap gap-2;
+  }
+  .details-section {
+    @apply mt-5 grid gap-4 border-t border-line pt-5 min-[641px]:col-span-2 min-[641px]:grid-cols-[minmax(0,1fr)_220px];
+  }
+  .price-input-row {
+    @apply mt-2 flex items-center gap-1 rounded border border-line bg-surface p-1 dark:bg-[#202823];
+  }
+  .price-input-row input {
+    @apply w-0 min-w-0 flex-1 border-0 bg-transparent px-2 focus:ring-0;
+  }
+  .price-from {
+    @apply min-h-10 shrink-0 rounded border border-line px-2 text-xs;
+  }
+  .price-from[aria-pressed='true'] {
+    @apply border-forest bg-forest text-paper;
+  }
+}

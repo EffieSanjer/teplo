@@ -5,5 +5,7 @@ let timer: ReturnType<typeof setTimeout>
 export function notify(message: string) {
   notice.value = message
   clearTimeout(timer)
-  timer = setTimeout(() => { notice.value = '' }, 4500)
+  timer = setTimeout(() => {
+    notice.value = ''
+  }, 4500)
 }

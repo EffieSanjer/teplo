@@ -1,1 +1,5 @@
-img.site-icon { object-fit: contain; object-position: center; flex-shrink: 0; }
+img.site-icon {
+  object-fit: contain;
+  object-position: center;
+  flex-shrink: 0;
+}

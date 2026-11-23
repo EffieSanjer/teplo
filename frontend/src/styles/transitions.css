@@ -1,0 +1,30 @@
+/* Native dialog backdrop and Vue lifecycle classes cannot live on template nodes. */
+.modal::backdrop {
+  background: #17291f99;
+}
+
+.page-enter-active,
+.page-leave-active,
+.list-content-enter-active,
+.list-content-leave-active,
+.startup-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.page-enter-from,
+.page-leave-to,
+.list-content-enter-from,
+.list-content-leave-to,
+.startup-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

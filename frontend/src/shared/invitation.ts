@@ -10,5 +10,7 @@ export function invitationToken(value: string): string | undefined {
     if (url.protocol !== 'https:' || url.hostname !== 't.me') return
     const payload = url.searchParams.get('startapp') || url.searchParams.get('start') || ''
     return /^friend_([A-Za-z0-9_-]{43})$/.exec(payload)?.[1]
-  } catch { return }
+  } catch {
+    return
+  }
 }

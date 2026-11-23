@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{user_id}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Avatar */
+        get: operations["avatar_api_v1_users__user_id__avatar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/friends/invitations": {
         parameters: {
             query?: never;
@@ -209,6 +226,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/items/{item_id}/priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Priority */
+        post: operations["priority_api_v1_items__item_id__priority_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/items/{item_id}/reservation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reservation */
+        post: operations["reservation_api_v1_items__item_id__reservation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{recipient_id}/items/{list_type}": {
         parameters: {
             query?: never;
@@ -273,23 +324,6 @@ export interface paths {
         put?: never;
         /** Archive */
         post: operations["archive_api_v1_items__item_id__archive_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/items/{item_id}/surprise": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Copy */
-        post: operations["copy_api_v1_items__item_id__surprise_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -434,6 +468,12 @@ export interface components {
              * @enum {string}
              */
             price_mode: "approximate" | "from";
+            /**
+             * Surprise Visibility
+             * @default friends
+             * @enum {string}
+             */
+            surprise_visibility: "friends" | "private";
             /** Recipient Id */
             recipient_id: string;
             /**
@@ -467,6 +507,12 @@ export interface components {
              * @enum {string}
              */
             price_mode: "approximate" | "from";
+            /**
+             * Surprise Visibility
+             * @default friends
+             * @enum {string}
+             */
+            surprise_visibility: "friends" | "private";
         };
         /** ItemOut */
         ItemOut: {
@@ -524,6 +570,23 @@ export interface components {
             updated_at: string;
             /** Can Manage */
             can_manage: boolean;
+            /**
+             * Surprise Visibility
+             * @default friends
+             * @enum {string}
+             */
+            surprise_visibility: "friends" | "private";
+            reservation?: components["schemas"]["ReservationOut"] | null;
+            /**
+             * Can Reserve
+             * @default false
+             */
+            can_reserve: boolean;
+            /**
+             * Most Wanted
+             * @default false
+             */
+            most_wanted: boolean;
         };
         /** MediaOut */
         MediaOut: {
@@ -560,6 +623,23 @@ export interface components {
             /** Warning */
             warning?: string | null;
         };
+        /** PriorityInput */
+        PriorityInput: {
+            /** Most Wanted */
+            most_wanted: boolean;
+        };
+        /** ReservationInput */
+        ReservationInput: {
+            /** Reserved */
+            reserved: boolean;
+        };
+        /** ReservationOut */
+        ReservationOut: {
+            /** Reserved By Me */
+            reserved_by_me: boolean;
+            /** Reserver Name */
+            reserver_name: string;
+        };
         /** SessionOut */
         SessionOut: {
             user: components["schemas"]["UserOut"];
@@ -579,6 +659,8 @@ export interface components {
             id: string;
             /** Display Name */
             display_name: string;
+            /** Avatar Media Id */
+            avatar_media_id?: string | null;
             /**
              * Is Friend
              * @default false
@@ -798,6 +880,35 @@ export interface operations {
             };
         };
     };
+    avatar_api_v1_users__user_id__avatar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_invitation_api_v1_friends_invitations_post: {
         parameters: {
             query?: never;
@@ -917,6 +1028,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    priority_api_v1_items__item_id__priority_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriorityInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reservation_api_v1_items__item_id__reservation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReservationInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -1106,37 +1287,6 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ItemOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    copy_api_v1_items__item_id__surprise_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                item_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            201: {
                 headers: {
                     [name: string]: unknown;
                 };

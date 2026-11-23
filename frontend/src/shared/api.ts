@@ -13,7 +13,12 @@ export const authReady = ref(false)
 export const invalidation = ref(0)
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message) }
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message)
+  }
 }
 
 export function clearSession() {
@@ -46,7 +51,7 @@ async function fetchResponse(url: string, options: RequestInit) {
       clearTimeout(timer)
       options.signal?.removeEventListener('abort', abort)
     }
-    await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)))
+    await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
   }
   throw new Error('Server unavailable')
 }
@@ -54,41 +59,85 @@ async function fetchResponse(url: string, options: RequestInit) {
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers)
   headers.set('X-Wishlist-Request', 'same-origin')
-  if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json')
+  if (options.body && !(options.body instanceof FormData))
+    headers.set('Content-Type', 'application/json')
   if (session.value) headers.set('X-CSRF-Token', session.value.csrf_token)
   let response: Awaited<ReturnType<typeof fetchResponse>>
   try {
-    response = await fetchResponse(`/api/v1${path}`, { ...options, headers, credentials: 'same-origin', cache: 'no-store' })
+    response = await fetchResponse(`/api/v1${path}`, {
+      ...options,
+      headers,
+      credentials: 'same-origin',
+      cache: 'no-store',
+    })
   } catch {
-    throw new ApiError(0, 'Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз')
+    throw new ApiError(
+      0,
+      'Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз',
+    )
   }
   if (!response.ok) {
     if ([401, 403].includes(response.status)) clearSession()
     let body
-    try { body = JSON.parse(response.body) } catch { body = {} }
+    try {
+      body = JSON.parse(response.body)
+    } catch {
+      body = {}
+    }
     const detail = body.detail
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail)
-      ? detail.map((e: { msg: string }) => e.msg.replace(/^Value error, /, '')).join('. ')
-      : 'Не удалось выполнить запрос. Попробуйте ещё раз'
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((e: { msg: string }) => e.msg.replace(/^Value error, /, '')).join('. ')
+          : 'Не удалось выполнить запрос. Попробуйте ещё раз'
     throw new ApiError(response.status, message)
   }
-  return response.status === 204 ? undefined as T : JSON.parse(response.body)
+  return response.status === 204 ? (undefined as T) : JSON.parse(response.body)
 }
 
 export function send<T>(path: string, body?: unknown, method = 'POST') {
   return api<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) })
 }
 
-export function imageUrl(id: string) { return `/api/v1/media/${encodeURIComponent(id)}` }
+export function imageUrl(id: string) {
+  return `/api/v1/media/${encodeURIComponent(id)}`
+}
 
 export function itemTitle(item: Pick<Item, 'title' | 'url'>) {
   if (item.title) return item.title
-  try { return new URL(item.url || '').hostname.replace(/^www\./, '') } catch { return 'Подарок' }
+  try {
+    return new URL(item.url || '').hostname.replace(/^www\./, '')
+  } catch {
+    return 'Подарок'
+  }
 }
 
-export function formatPrice(item: Pick<Item, 'price' | 'currency'> & { price_mode?: Item['price_mode'] }) {
+export function hasPrice(item: Pick<Item, 'price' | 'currency'>) {
+  return (
+    item.price !== null &&
+    item.price !== undefined &&
+    String(item.price).trim() !== '' &&
+    Boolean(item.currency?.trim())
+  )
+}
+
+export function formatPrice(
+  item: Pick<Item, 'price' | 'currency'> & { price_mode?: Item['price_mode'] },
+) {
   if (item.price === null || item.price === undefined || !item.currency) return 'Бесценно'
   const prefix = item.price_mode === 'from' ? 'От ' : ''
-  try { return prefix + new Intl.NumberFormat('ru-RU', { style: 'currency', currency: item.currency, maximumFractionDigits: 2 }).format(Number(item.price)) }
-  catch { return `${prefix}${item.price} ${item.currency}` }
+  try {
+    return (
+      prefix +
+      new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: item.currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(Number(item.price))
+    )
+  } catch {
+    return `${prefix}${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Number(item.price))} ${item.currency}`
+  }
 }

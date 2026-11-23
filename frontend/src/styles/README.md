@@ -1,52 +1,30 @@
-# Стили интерфейса
+# Interface styles
 
-Используется обычный CSS: Tailwind и дополнительные зависимости не нужны.
-Единая точка подключения — `index.css`, импортируемая в `src/main.ts`.
+Tailwind CSS 4 is connected through `@tailwindcss/vite`. The only stylesheet
+imported by the app is `src/styles/index.css`; it acts as an aggregate entry
+point and contains no rules of its own.
 
-## Структура
+| File                        | Responsibility                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `theme.css`                 | Tailwind CSS-first configuration: `@theme` tokens and the `dark` variant. This is the `tailwind.config` equivalent in v4. |
+| `base.css`                  | `@layer base`: theme variables and element defaults.                                                                      |
+| `components/controls.css`   | Shared buttons, states, empty states and loading placeholders.                                                            |
+| `components/collection.css` | Wishlist collection headings, grid and archive.                                                                           |
+| `components/friends.css`    | Friends directory, invitations and circle layout.                                                                         |
+| `components/forms.css`      | Wish editor, photo upload and price controls.                                                                             |
+| `components/feedback.css`   | Transient notifications.                                                                                                  |
+| `components/auth.css`       | Login and welcome-screen cards.                                                                                           |
+| `transitions.css`           | Dialog backdrop, Vue transition classes and reduced-motion rules.                                                         |
+| `welcome.css`               | Entry page layout.                                                                                                        |
+| `scoped/`                   | Component-scoped styles referenced directly from SFCs.                                                                    |
 
-| Каталог | Назначение |
-| --- | --- |
-| `foundation/` | Базовые переменные, сброс, общие элементы, формы и исходные адаптивные правила |
-| `themes/` | Палитры, светлая и тёмная темы, абстрактные фоны и градиенты идей |
-| `layout/` | Раскладка коллекций и полноэкранная компоновка без внешней рамки |
-| `components/` | Оформление карточек, профилей, сертификатов, навигации, друзей и модалок |
-| `responsive/` | Адаптивные размеры и расположение элементов общей компоновки |
-| `effects/` | Зернистость стеклянных поверхностей |
-| `scoped/` | Локальные стили Vue-компонентов, подключаемые через `<style scoped src="…">` |
+Keep theme values in `theme.css` and shared `@apply` classes in `components/`.
+Layout and responsive rules belong in Vue templates as utility classes. Plain
+CSS is limited to theme variables, dialog backdrops and Vue transition
+lifecycle selectors. Do not reintroduce the old cascading stylesheets: their
+high-specificity selectors conflict with component layout and avatar
+dimensions.
 
-## Где менять оформление
-
-- Цвета фона и прозрачность стекла — `themes/canvas.css`.
-- Светлая палитра — `themes/light.css`; базовая тёмная палитра — `themes/material.css`.
-- Градиенты карточек без фото и перенос названия до четырёх строк — `themes/ideas.css`.
-- Прозрачность карточек и размеры фото — `components/glass-cards.css`.
-- Иконки компактных карточек без фото — `components/compact-ideas.css`.
-- Цветовые градиенты из аватаров — `components/avatar-colors.css`.
-- Горизонтальная карусель сертификатов — `components/certificates.css`.
-- Нижняя и верхняя навигация — `components/navigation.css`.
-- Компактный список друзей и блок приглашений — `components/friends.css`.
-- Распределение высоты между фото и информацией в модалке — `components/adaptive-dialogs.css`.
-- Зерно полупрозрачных поверхностей — `effects/grain.css`.
-
-SVG-фоны и текстура зерна лежат в `src/assets/`. Пути `url()` считаются
-относительно соответствующего CSS-файла и обрабатываются Vite.
-
-## Порядок правил
-
-Порядок импортов в `index.css` сохраняет существующий каскад: базовые правила →
-материалы и адаптивная компоновка → актуальные полноэкранные и стеклянные стили →
-темы и эффекты. Некоторые исходные правила намеренно остаются переопределёнными:
-этот перенос не удаляет их и не меняет внешний вид. Не сортируйте импорты
-автоматически и не добавляйте `@layer` без отдельной проверки приоритетов.
-
-Scoped-файлы не нужно импортировать глобально: Vue подключает их из компонентов,
-сохраняя изоляцию селекторов, включая `:deep()` и `:global()`.
-
-## Динамические значения
-
-В Vue остаются только значения, зависящие от данных: цвета конкретного аватара,
-палитра карточки, пропорции фотографии и размеры маленьких иконок. Они передаются
-через `:style`/CSS-переменные; само оформление хранится в CSS. JavaScript также
-рассчитывает высоту строк masonry-сетки и анимацию открытия модалки — это поведение,
-а не статические стили.
+ItemDetail.vue measures dimensions only when the viewport or content changes.
+Gesture animation paints one compositor transform per frame without reactive
+updates or layout reads in the animation loop.

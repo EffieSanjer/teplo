@@ -1,25 +1,75 @@
-/* Compact invitations and whole-card friend links. */
-:root .app-shell .friends-layout { grid-template-columns: 1fr; gap: 14px; }
-:root .app-shell .friends-intro {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 8px 16px;
-  padding: 18px 22px;
-  border-radius: 26px;
-  background: linear-gradient(125deg, #ffffff10, #ffffff02), var(--glass-tint);
-  -webkit-backdrop-filter: blur(22px);
-  backdrop-filter: blur(22px);
+/* Friends directory, invitations and circle layout. */
+@layer components {
+  .friends-layout {
+    @apply mx-auto grid w-full max-w-[1440px] gap-7 px-4 pt-2 min-[761px]:grid-cols-[278px_minmax(0,1fr)] min-[761px]:gap-10 min-[761px]:px-10 min-[761px]:pt-6;
+  }
+  .friends-intro {
+    @apply flex flex-col rounded-md bg-[#304b40] p-6 text-paper min-[761px]:sticky min-[761px]:top-7;
+  }
+  .friends-intro > .circle-eyebrow {
+    @apply text-[#c7d0c1];
+  }
+  .friends-intro .page-heading {
+    @apply my-6;
+  }
+  .friends-intro .heading-title {
+    @apply flex items-center gap-4;
+  }
+  .friends-intro h1 {
+    @apply font-editorial text-[40px] tracking-tight;
+  }
+  .friends-intro-copy {
+    @apply mb-6 font-editorial text-lg leading-relaxed text-[#cbd4c6];
+  }
+  .friend-actions {
+    @apply flex flex-col gap-3;
+  }
+  .friend-invite-action {
+    @apply bg-sand text-forest hover:bg-[#e9ddc6];
+  }
+  .received-invite {
+    @apply text-xs text-[#d6dccf];
+  }
+  .friends-directory {
+    @apply min-w-0;
+  }
+  .circle-directory-heading {
+    @apply mb-6 border-b border-line pb-5;
+  }
+  .circle-directory-heading h2 {
+    @apply mt-2 font-editorial text-[28px] tracking-tight;
+  }
+  .friends-toolbar {
+    @apply mb-5 flex flex-wrap items-center gap-3;
+  }
+  .search-input {
+    @apply flex min-w-0 flex-1 items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-[#2b362e];
+  }
+  .search-input input {
+    @apply border-0 bg-transparent px-0 text-sm shadow-none focus:ring-0;
+  }
+  .search-clear {
+    @apply flex size-7 items-center justify-center;
+  }
+  .directory-count {
+    @apply text-xs text-muted;
+  }
+  .friends-grid {
+    @apply grid gap-3 min-[1000px]:grid-cols-2;
+  }
+  .friends-refresh-error {
+    @apply mb-4 grid gap-2 text-sm text-[#a04432];
+  }
+  .type-switch {
+    @apply mb-4 grid grid-cols-2 gap-1 rounded bg-[#e6e8dd] p-1 dark:bg-[#202823];
+  }
+  .type-switch button {
+    @apply flex min-h-12 items-center justify-center gap-2 rounded p-2 text-sm text-muted;
+  }
+  .type-switch .selected {
+    @apply bg-forest text-paper;
+  }
+  .type-switch small {
+    @apply mt-1 block text-[10px] opacity-75;
+  }
 }
-:root .app-shell .friends-intro > .collection-eyebrow,
-:root .app-shell .friends-intro-copy { display: none; }
-:root .app-shell .friends-intro .page-heading { margin: 0; }
-:root .app-shell .friends-intro .page-heading h1 { font-size: 26px; letter-spacing: -.8px; }
-:root .app-shell .friend-invite-action { width: auto; margin: 0; min-height: 38px; padding: 9px 14px; font-size: 11px; }
-:root .app-shell .friends-intro .received-invite { grid-column: 1 / -1; justify-self: end; margin: 0; }
-:root .app-shell .friends-directory .friend-profile:not(.prominent) { padding: 18px; padding-right: 54px; }
-:root .app-shell .friends-directory .friend-profile-actions { position: absolute; right: 12px; top: 50%; width: auto; margin: 0; transform: translateY(-50%); z-index: 2; }
-:root .app-shell .friends-directory .friend-remove { width: 30px; min-height: 30px; border: 0; box-shadow: none; opacity: .6; }
-:root .app-shell .friend-profile.prominent:has(.friend-profile-heading) { padding-top: 56px; }
-:root .app-shell .friend-profile-heading { position: absolute; top: 10px; left: 16px; width: auto; }
-:root .app-shell .friend-profile-heading .back-link { min-height: 30px; margin: 0; font-size: 11px; }

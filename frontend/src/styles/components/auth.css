@@ -1,0 +1,30 @@
+/* Login and welcome-screen cards. */
+@layer components {
+  .login-page {
+    @apply mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-6;
+  }
+  .login-theme {
+    @apply fixed right-4 top-4;
+  }
+  .login-brand {
+    @apply text-[40px];
+  }
+  .brand-icon {
+    @apply mr-3 grid size-12 place-items-center rounded bg-forest text-paper;
+  }
+  .login-card {
+    @apply grid gap-5 rounded-lg border border-line bg-surface p-6 dark:bg-[#2b362e];
+  }
+  .login-art {
+    @apply flex items-center gap-4 text-forest;
+  }
+  .login-card h1 {
+    @apply font-editorial text-3xl;
+  }
+  .login-card > p {
+    @apply text-sm leading-relaxed text-muted;
+  }
+  .login-disclaimer {
+    @apply flex items-center gap-2 text-xs text-muted;
+  }
+}
