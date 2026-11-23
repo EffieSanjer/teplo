@@ -219,6 +219,41 @@
         }
       }
     },
+    "/api/v1/users/{user_id}/avatar": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Avatar",
+        "operationId": "avatar_api_v1_users__user_id__avatar_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/friends/invitations": {
       "post": {
         "tags": [
@@ -356,6 +391,110 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/items/{item_id}/priority": {
+      "post": {
+        "tags": [
+          "gifts"
+        ],
+        "summary": "Priority",
+        "operationId": "priority_api_v1_items__item_id__priority_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/items/{item_id}/reservation": {
+      "post": {
+        "tags": [
+          "gifts"
+        ],
+        "summary": "Reservation",
+        "operationId": "reservation_api_v1_items__item_id__reservation_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -625,48 +764,6 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemOut"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/items/{item_id}/surprise": {
-      "post": {
-        "tags": [
-          "gifts"
-        ],
-        "summary": "Copy",
-        "operationId": "copy_api_v1_items__item_id__surprise_post",
-        "parameters": [
-          {
-            "name": "item_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Item Id"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -982,7 +1079,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 5000
+                "maxLength": 500
               },
               {
                 "type": "null"
@@ -1051,6 +1148,15 @@
             ],
             "title": "Price Mode",
             "default": "approximate"
+          },
+          "surprise_visibility": {
+            "type": "string",
+            "enum": [
+              "friends",
+              "private"
+            ],
+            "title": "Surprise Visibility",
+            "default": "friends"
           },
           "recipient_id": {
             "type": "string",
@@ -1103,7 +1209,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 5000
+                "maxLength": 500
               },
               {
                 "type": "null"
@@ -1172,6 +1278,15 @@
             ],
             "title": "Price Mode",
             "default": "approximate"
+          },
+          "surprise_visibility": {
+            "type": "string",
+            "enum": [
+              "friends",
+              "private"
+            ],
+            "title": "Surprise Visibility",
+            "default": "friends"
           }
         },
         "additionalProperties": false,
@@ -1321,6 +1436,35 @@
           "can_manage": {
             "type": "boolean",
             "title": "Can Manage"
+          },
+          "surprise_visibility": {
+            "type": "string",
+            "enum": [
+              "friends",
+              "private"
+            ],
+            "title": "Surprise Visibility",
+            "default": "friends"
+          },
+          "reservation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReservationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_reserve": {
+            "type": "boolean",
+            "title": "Can Reserve",
+            "default": false
+          },
+          "most_wanted": {
+            "type": "boolean",
+            "title": "Most Wanted",
+            "default": false
           }
         },
         "type": "object",
@@ -1455,6 +1599,50 @@
         "type": "object",
         "title": "MetadataOut"
       },
+      "PriorityInput": {
+        "properties": {
+          "most_wanted": {
+            "type": "boolean",
+            "title": "Most Wanted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "most_wanted"
+        ],
+        "title": "PriorityInput"
+      },
+      "ReservationInput": {
+        "properties": {
+          "reserved": {
+            "type": "boolean",
+            "title": "Reserved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reserved"
+        ],
+        "title": "ReservationInput"
+      },
+      "ReservationOut": {
+        "properties": {
+          "reserved_by_me": {
+            "type": "boolean",
+            "title": "Reserved By Me"
+          },
+          "reserver_name": {
+            "type": "string",
+            "title": "Reserver Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reserved_by_me",
+          "reserver_name"
+        ],
+        "title": "ReservationOut"
+      },
       "SessionOut": {
         "properties": {
           "user": {
@@ -1501,6 +1689,17 @@
           "display_name": {
             "type": "string",
             "title": "Display Name"
+          },
+          "avatar_media_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Media Id"
           },
           "is_friend": {
             "type": "boolean",

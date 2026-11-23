@@ -124,6 +124,7 @@ class Item(Base):
         CheckConstraint("list_type IN ('wishlist', 'surprise')", name="item_list_type"),
         CheckConstraint("item_type IN ('idea', 'gift', 'certificate')", name="item_type"),
         CheckConstraint("price_mode IN ('approximate', 'from')", name="item_price_mode"),
+        CheckConstraint("surprise_visibility IN ('friends', 'private')", name="item_surprise_visibility"),
         CheckConstraint(
             "(list_type = 'wishlist' AND author_id = recipient_id AND community_id IS NULL) OR "
             "(list_type = 'surprise' AND author_id <> recipient_id AND community_id IS NOT NULL)",
@@ -154,9 +155,18 @@ class Item(Base):
     price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     currency: Mapped[str | None] = mapped_column(String(3))
     price_mode: Mapped[str] = mapped_column(String(16), default="approximate", server_default="approximate")
+    surprise_visibility: Mapped[str] = mapped_column(String(10), default="friends", server_default="friends")
+    most_wanted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     archived_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class Reservation(Base):
+    __tablename__ = "item_reservations"
+    item_id: Mapped[str] = mapped_column(ForeignKey("items.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class AuthSession(Base):

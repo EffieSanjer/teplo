@@ -18,6 +18,8 @@ from test_media import photo
 def invite(client):
     response = client.post("/api/v1/friends/invitations")
     assert response.status_code == 201, response.text
+    assert urlsplit(response.json()["url"]).path == "/test_wishlist_bot"
+    assert "startapp" not in parse_qs(urlsplit(response.json()["url"]).query)
     payload = parse_qs(urlsplit(response.json()["url"]).query)["start"][0]
     assert len(payload) <= 64
     assert payload.startswith("friend_")
@@ -68,11 +70,10 @@ def test_invitation_explicit_mutual_access_and_immediate_revocation(db, people):
     assert b.put(f"/api/v1/items/{wish['id']}", json={"item_type": "idea", "title": "Чужое"}).status_code == 404
     assert b.delete(f"/api/v1/items/{wish['id']}").status_code == 404
     assert b.post(f"/api/v1/items/{wish['id']}/archive", json={"archived": True}).status_code == 404
-    assert b.post(f"/api/v1/items/{wish['id']}/surprise").status_code == 201
-    assert b.get(f"/api/v1/users/{uid}/items/surprise").status_code == 200
     assert b.post("/api/v1/items", json={
         "recipient_id": uid, "list_type": "surprise", "item_type": "idea", "title": "Секрет",
     }).status_code == 201
+    assert b.get(f"/api/v1/users/{uid}/items/surprise").status_code == 200
     assert db.get(Membership, (aa["community_id"], bid)) is None
     assert b.delete(f"/api/v1/friends/{uid}").status_code == 204
     assert a.get("/api/v1/users").json() == b.get("/api/v1/users").json() == []

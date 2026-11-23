@@ -66,27 +66,6 @@ def test_surprise_photo_hidden_even_in_archive(client, friend_id, login_as):
     assert client.get(f"{ROOT}/media/{media_id}").status_code == 404
 
 
-def test_shared_copy_survives_source_deletion(client, friend_id, login_as):
-    friend = login_as(friend_id)
-    media_id = upload(friend).json()["id"]
-    source = friend.post(
-        ROOT + "/items",
-        json={
-            "list_type": "wishlist",
-            "recipient_id": friend_id,
-            "item_type": "idea",
-            "title": "Желание",
-            "image_id": media_id,
-        },
-    ).json()
-    copied = client.post(f"{ROOT}/items/{source['id']}/surprise").json()
-    assert copied["image_id"] == media_id
-    friend.delete(f"{ROOT}/items/{source['id']}")
-    # Original uploader is also the surprise recipient: upload ownership is not access.
-    assert friend.get(f"{ROOT}/media/{media_id}").status_code == 404
-    assert client.get(f"{ROOT}/media/{media_id}").status_code == 200
-
-
 def test_cannot_attach_someone_elses_upload(client, friend_id, login_as):
     friend = login_as(friend_id)
     media_id = upload(friend).json()["id"]

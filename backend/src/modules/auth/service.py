@@ -115,6 +115,9 @@ def telegram_login(db: Session, raw: str, settings: Settings) -> tuple[User, str
     else:
         db.add(Membership(community_id=community_id, user_id=user.id, status="active"))
     db.commit()
+    from src.modules.users.avatars import telegram_avatar
+
+    telegram_avatar(db, user, settings, tg.get("photo_url"))
     return user, community_id
 
 

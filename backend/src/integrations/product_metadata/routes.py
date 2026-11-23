@@ -1,7 +1,7 @@
 import threading
 import time
 from decimal import Decimal
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -11,6 +11,12 @@ from src.config import Settings, get_settings
 from src.infrastructure.database import get_db
 from src.infrastructure.rate_limit import limit
 from src.integrations.product_metadata.network import FetchError, fetch_public
+from src.integrations.product_metadata.afisha import fetch_session, session_api_url
+from src.integrations.product_metadata.avito import is_avito, parse_avito
+from src.integrations.product_metadata.marketplaces import (
+    marketplace_title, merge_product, prefer_large_image, product_ref, public_product,
+    reject_marketplace_challenge, reject_yandex_challenge, site_of, state_product,
+)
 from src.integrations.product_metadata.parser import parse_instagram_post, parse_logos, parse_metadata, parse_telegram_post
 from src.integrations.product_metadata.sources import (
     instagram_post_url, preview_url, telegram_fallback_url, telegram_post,
@@ -43,6 +49,24 @@ class MetadataOut(BaseModel):
     warning: str | None = None
 
 
+def _absolute_images(values, base_url):
+    result = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        try:
+            url = urljoin(base_url, value.strip())
+            parts = urlsplit(url)
+        except ValueError:
+            continue
+        if (parts.scheme in {"http", "https"} and parts.hostname
+                and not parts.username and not parts.password and url not in result):
+            result.append(url)
+        if len(result) >= 12:
+            break
+    return result
+
+
 @router.post("", response_model=MetadataOut)
 def metadata(
     body: MetadataInput,
@@ -68,16 +92,58 @@ def metadata(
 
         html, final_url, failure = b"", body.url, None
         draft = {}
+        requested_ref = product_ref(body.url)
         try:
-            html, content_type, final_url = fetch(preview_url(body.url), settings.metadata_max_bytes)
-            if content_type.split(";")[0].strip().lower() not in {"text/html", "application/xhtml+xml"}:
-                raise FetchError("Ссылка не содержит HTML-страницу")
-            draft = parse_metadata(html, final_url)
+            if endpoint := session_api_url(body.url):
+                draft = fetch_session(endpoint, fetch, settings.metadata_max_bytes)
+            else:
+                html, content_type, final_url = fetch(preview_url(body.url), settings.metadata_max_bytes)
+                if content_type.split(";")[0].strip().lower() not in {"text/html", "application/xhtml+xml"}:
+                    raise FetchError("Ссылка не содержит HTML-страницу")
+                final_ref = product_ref(final_url)
+                if requested_ref and final_ref and requested_ref != final_ref:
+                    raise FetchError("Сайт перенаправил на другой товар")
+                reject_marketplace_challenge(html, final_url)
+                reject_yandex_challenge(html, final_url)
+                draft = (parse_avito(html, final_url, body.url) if is_avito(body.url)
+                         else parse_metadata(html, final_url))
+                if not body.prefer_logo and not is_avito(body.url):
+                    merge_product(draft, state_product(html, final_url))
         except FetchError as exc:
             failure = exc
-            html = b""
+            html = getattr(exc, "body", b"") or b""
+            err_url = getattr(exc, "url", final_url) or final_url
+            if not draft and html and is_avito(body.url):
+                try:
+                    draft = parse_avito(html, err_url, body.url)
+                    failure = None
+                except FetchError as av_exc:
+                    failure = av_exc
+            elif not draft and is_avito(body.url):
+                failure = FetchError(
+                    "Авито ограничил доступ или запросил проверку безопасности. "
+                    "Ссылку можно сохранить, добавьте название и фото вручную"
+                )
+            if not draft:
+                html = b""
+        site = site_of(final_url)
+        if not body.prefer_logo and (
+            not draft.get("title") or not draft.get("image_url") or draft.get("price") is None
+        ):
+            merge_product(
+                draft,
+                public_product(final_url, fetch, settings.metadata_max_bytes, html=html),
+            )
+        if draft.get("title"):
+            draft["title"] = marketplace_title(draft["title"], site)
+        if failure and draft.get("title"):
+            failure = None  # Partial product data is useful even without a downloadable photo.
         image_url = draft.pop("image_url", None)
-        image_urls = draft.pop("image_urls", [image_url] if image_url else [])
+        image_urls = draft.pop("image_urls", [])
+        if image_url and image_url not in image_urls:
+            image_urls.insert(0, image_url)
+        image_urls = _absolute_images(image_urls, final_url)
+        image_urls = list(dict.fromkeys(prefer_large_image(url, site) for url in image_urls))
 
         def store(url, logo=False):
             try:

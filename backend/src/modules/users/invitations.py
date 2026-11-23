@@ -57,6 +57,8 @@ def create_invitation(
     expires = utcnow() + timedelta(days=7)
     db.add(FriendInvitation(token_hash=token_hash(token, settings), owner_id=ctx.user.id, expires_at=expires))
     db.commit()
+    # Use the private bot's /start flow; it works without a Main Mini App.
+    # The bot replies with a WebApp button carrying the explicit invite query.
     return InvitationOut(url=f"https://t.me/{settings.telegram_bot_username}?start=friend_{token}", expires_at=expires)
 
 
@@ -97,7 +99,7 @@ def accept(
     db.execute(insert(Friendship).values(user_id=first, friend_id=second, created_at=utcnow()).on_conflict_do_nothing())
     db.commit()
     user = db.get(User, owner)
-    return UserOut(id=user.id, display_name=user.display_name, is_friend=True, can_surprise=True)
+    return UserOut(id=user.id, display_name=user.display_name, avatar_media_id=user.avatar_media_id, is_friend=True, can_surprise=True)
 
 
 @router.delete("/{user_id}", status_code=204)

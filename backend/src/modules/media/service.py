@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.config import Settings
-from src.infrastructure.database import Item, Media, new_id, utcnow
+from src.infrastructure.database import Item, Media, User, new_id, utcnow
 from src.modules.auth.service import Context
 from src.modules.gifts.service import accessible, missing
 
@@ -63,6 +63,12 @@ def authorized_media(db: Session, ctx: Context, media_id: str, settings: Setting
     media = db.get(Media, media_id)
     if not media:
         missing()
+    avatar_owner = db.scalar(select(User).where(User.avatar_media_id == media.id))
+    if avatar_owner:
+        from src.modules.users.access import require_visible_user
+
+        require_visible_user(db, ctx.user.id, avatar_owner.id, ctx.community_id, settings)
+        return media
     items = db.scalars(select(Item).where(Item.image_id == media.id)).all()
     if items:
         if any(accessible(db, ctx, item, settings) for item in items):
@@ -83,6 +89,7 @@ def cleanup(db: Session, settings: Settings) -> int:
         select(Media).where(
             Media.created_at < cutoff,
             ~select(Item.id).where(Item.image_id == Media.id).exists(),
+            ~select(User.id).where(User.avatar_media_id == Media.id).exists(),
         )
     ).all()
     for media in rows:

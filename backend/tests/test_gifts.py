@@ -72,7 +72,7 @@ def test_null_price_and_zero(client):
     assert create(client, price="0", currency="USD").json()["price"] == "0.00"
 
 
-def test_certificate_crud_copy_and_privacy(client, friend_id, login_as):
+def test_certificate_crud_and_privacy(client, friend_id, login_as):
     recipient = login_as(friend_id)
     source = recipient.post(
         ROOT + "/items",
@@ -85,9 +85,9 @@ def test_certificate_crud_copy_and_privacy(client, friend_id, login_as):
     item = source.json()
     assert item["item_type"] == "certificate"
     assert item["price_mode"] == "from"
-    copy = client.post(f"{ROOT}/items/{item['id']}/surprise")
-    assert copy.status_code == 201
-    copied = copy.json()
+    assert client.post(f"{ROOT}/items/{item['id']}/surprise").status_code == 404
+    copied = create(client, recipient_id=friend_id, list_type="surprise", item_type="certificate",
+                    url="https://example.com/shop", price="1000", currency="RUB", price_mode="from").json()
     assert copied["price_mode"] == "from"
     assert copied["item_type"] == "certificate"
     assert recipient.get(f"{ROOT}/items/{copied['id']}").status_code == 404
@@ -143,16 +143,9 @@ def test_only_author_manages(client, friend_id, login_as):
     assert recipient.get(f"{ROOT}/items/{item_id}").status_code == 404
 
 
-def test_copy_independence(client, db, friend_id):
+def test_copy_is_no_longer_available(client, db, friend_id):
     source = db.scalar(select(Item).where(Item.recipient_id == friend_id, Item.list_type == "wishlist"))
-    copied = client.post(f"{ROOT}/items/{source.id}/surprise")
-    assert copied.status_code == 201
-    item_id = copied.json()["id"]
-    assert copied.json()["title"] == source.title
-    client.put(f"{ROOT}/items/{item_id}", json={"item_type": "idea", "title": "Другой подарок"})
-    db.refresh(source)
-    assert source.title != "Другой подарок"
-    client.post(f"{ROOT}/items/{item_id}/archive", json={"archived": True})
+    assert client.post(f"{ROOT}/items/{source.id}/surprise").status_code == 404
     db.refresh(source)
     assert source.archived_at is None
 

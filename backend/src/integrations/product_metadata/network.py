@@ -80,8 +80,18 @@ def fetch_public(url: str, max_bytes: int, timeout: float) -> tuple[bytes, str, 
                     "GET",
                     target,
                     headers={
-                        "User-Agent": "FriendsWishlist/0.1 (product preview)",
-                        "Accept": "text/html,application/xhtml+xml,image/*",
+                        # A browser-like UA is used for public pages/APIs only:
+                        # no cookies, login, JS execution or CAPTCHA bypass.
+                        "User-Agent": (
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/124.0.0.0 Safari/537.36"
+                        ),
+                        "Accept": (
+                            "text/html,application/xhtml+xml,application/json;q=0.9,"
+                            "image/*;q=0.8,*/*;q=0.7"
+                        ),
+                        "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
                         "Accept-Encoding": "identity",
                         "Connection": "close",
                     },
@@ -94,7 +104,26 @@ def fetch_public(url: str, max_bytes: int, timeout: float) -> tuple[bytes, str, 
                     url = urljoin(url, location)
                     continue
                 if response.status != 200:
-                    raise FetchError("Сайт не предоставил данные")
+                    err_body = b""
+                    err_ct = response.getheader("Content-Type", "")
+                    if response.status in {403, 429, 503}:
+                        try:
+                            length = response.getheader("Content-Length")
+                            limit = max_bytes if not length else min(max_bytes, int(length))
+                            if limit > 0:
+                                # Bounded read so challenge/block pages can be detected.
+                                remaining = deadline - time.monotonic()
+                                if remaining > 0 and conn.sock:
+                                    conn.sock.settimeout(remaining)
+                                err_body = response.read(min(limit, 262144))
+                        except Exception:
+                            err_body = b""
+                    err = FetchError("Сайт не предоставил данные")
+                    err.status = response.status
+                    err.body = err_body
+                    err.content_type = err_ct
+                    err.url = url
+                    raise err
                 if response.getheader("Content-Encoding", "identity").lower() != "identity":
                     raise FetchError("Неподдерживаемое сжатие ответа")
                 length = response.getheader("Content-Length")

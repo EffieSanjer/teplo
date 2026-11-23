@@ -7,9 +7,37 @@ from src.config import Settings, get_settings
 from src.infrastructure.database import get_db, utcnow
 from src.modules.auth.service import Context, get_context
 from src.modules.gifts import service
-from src.modules.gifts.schemas import ArchiveInput, ItemCreate, ItemInput, ItemOut
+from src.modules.gifts.schemas import ArchiveInput, ItemCreate, ItemInput, ItemOut, PriorityInput, ReservationInput
 
 router = APIRouter(tags=["gifts"])
+
+
+@router.post("/items/{item_id}/priority", response_model=ItemOut)
+def priority(
+    item_id: str,
+    body: PriorityInput,
+    ctx: Context = Depends(get_context),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    item = service.get_item(db, ctx, item_id, settings, manage=True)
+    if item.list_type != "wishlist" or item.recipient_id != ctx.user.id:
+        service.missing()
+    item.most_wanted = body.most_wanted
+    db.commit()
+    db.refresh(item)
+    return service.serialize(db, ctx, item)
+
+
+@router.post("/items/{item_id}/reservation", response_model=ItemOut)
+def reservation(
+    item_id: str,
+    body: ReservationInput,
+    ctx: Context = Depends(get_context),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    return service.serialize(db, ctx, service.reserve_item(db, ctx, item_id, body.reserved, settings))
 
 
 @router.get("/users/{recipient_id}/items/{list_type}", response_model=list[ItemOut])
@@ -86,11 +114,3 @@ def delete(
     db.commit()
 
 
-@router.post("/items/{item_id}/surprise", response_model=ItemOut, status_code=201)
-def copy(
-    item_id: str,
-    ctx: Context = Depends(get_context),
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-):
-    return service.serialize(db, ctx, service.copy_as_surprise(db, ctx, item_id, settings))

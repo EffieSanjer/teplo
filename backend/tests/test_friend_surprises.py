@@ -55,7 +55,7 @@ def test_surprises_shared_by_direct_friends_hidden_from_recipient_and_outsiders(
     assert a.get(f'/api/v1/items/{item["id"]}').status_code == 404
 
 
-def test_copy_wish_and_certificate_into_same_friend_list_and_reentry(db, people):  # noqa: F811
+def test_shared_friend_list_single_space_and_reentry(db, people):  # noqa: F811
     a, b, c, aa, _, _ = people
     uid = aa['user']['id']
     assert b.post('/api/v1/friends/accept', json={'token': invite(a)}).status_code == 200
@@ -64,8 +64,11 @@ def test_copy_wish_and_certificate_into_same_friend_list_and_reentry(db, people)
     wish = a.post('/api/v1/items', json={
         'recipient_id': uid, 'list_type': 'wishlist', 'item_type': 'idea', 'title': 'Желание', 'image_id': mid,
     }).json()
-    copied = b.post(f'/api/v1/items/{wish["id"]}/surprise')
-    assert copied.status_code == 201
+    secret_mid = b.post('/api/v1/media', files={'file': ('photo.png', photo(), 'image/png')}).json()['id']
+    secret = b.post('/api/v1/items', json={
+        'recipient_id': uid, 'list_type': 'surprise', 'item_type': 'idea', 'title': 'Секрет', 'image_id': secret_mid,
+    })
+    assert secret.status_code == 201
     cert = c.post('/api/v1/items', json={
         'recipient_id': uid, 'list_type': 'surprise', 'item_type': 'certificate', 'url': 'https://example.com',
     })
@@ -73,16 +76,17 @@ def test_copy_wish_and_certificate_into_same_friend_list_and_reentry(db, people)
     assert len(db.scalars(select(FriendSurpriseSpace)).all()) == 1
     assert len(b.get(f'/api/v1/users/{uid}/items/surprise').json()) == 2
     assert len(c.get(f'/api/v1/users/{uid}/items/surprise').json()) == 2
-    assert a.get(f'/api/v1/items/{copied.json()["id"]}').status_code == 404
-    # Shared source image remains readable via the recipient's own wish, not the secret copy.
+    assert a.get(f'/api/v1/items/{secret.json()["id"]}').status_code == 404
+    assert a.get(f'/api/v1/media/{secret_mid}').status_code == 404
+    # The recipient keeps access to their own wish and its photo.
     assert a.get(f'/api/v1/media/{mid}').status_code == 200
     assert a.get(f'/api/v1/items/{wish["id"]}').json()['list_type'] == 'wishlist'
     assert a.post('/api/v1/items', json={
         'recipient_id': uid, 'list_type': 'surprise', 'item_type': 'idea', 'title': 'Себе',
     }).status_code == 404
     login(b, get_settings(), 456)
-    assert b.get(f'/api/v1/items/{copied.json()["id"]}').status_code == 200
-    assert b.delete(f'/api/v1/items/{copied.json()["id"]}').status_code == 204
+    assert b.get(f'/api/v1/items/{secret.json()["id"]}').status_code == 200
+    assert b.delete(f'/api/v1/items/{secret.json()["id"]}').status_code == 204
     assert a.get(f'/api/v1/items/{wish["id"]}').status_code == 200
 
 

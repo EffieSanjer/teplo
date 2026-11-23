@@ -24,12 +24,13 @@ class ItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     item_type: Literal["idea", "gift", "certificate"]
     title: str | None = Field(default=None, max_length=200)
-    description: str | None = Field(default=None, max_length=5000)
+    description: str | None = Field(default=None, max_length=500)
     url: str | None = Field(default=None, max_length=2048)
     image_id: str | None = Field(default=None, min_length=36, max_length=36)
     price: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     price_mode: Literal["approximate", "from"] = "approximate"
+    surprise_visibility: Literal["friends", "private"] = "friends"
 
     @field_validator("title", "description", "url", "currency", mode="before")
     @classmethod
@@ -43,6 +44,8 @@ class ItemInput(BaseModel):
 
     @model_validator(mode="after")
     def required_fields(self):
+        if self.item_type == "certificate" and self.description and len(self.description) > 100:
+            raise ValueError("Заметка к сертификату — не больше 100 символов")
         if self.item_type == "idea" and not self.title:
             raise ValueError("У идеи должно быть название")
         if self.item_type == "gift" and not self.url:
@@ -79,6 +82,23 @@ class ItemOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     can_manage: bool
+    surprise_visibility: Literal["friends", "private"] = "friends"
+    reservation: "ReservationOut | None" = None
+    can_reserve: bool = False
+    most_wanted: bool = False
+
+
+class ReservationOut(BaseModel):
+    reserved_by_me: bool
+    reserver_name: str
+
+
+class ReservationInput(BaseModel):
+    reserved: bool
+
+
+class PriorityInput(BaseModel):
+    most_wanted: bool
 
 
 class ArchiveInput(BaseModel):
