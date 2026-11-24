@@ -87,11 +87,13 @@ describe('ItemCard', () => {
     await wrapper.get('.card-open').trigger('click')
     expect(wrapper.emitted('open')![0][1]).toMatchObject({ photoRatio: 1.5 })
   })
-  it('shows the note excerpt instead of a repeating card body', () => {
+  it('shows only the title on cards without a photo', () => {
     const wrapper = mount(ItemCard, { props: { item, index: 0 } })
     expect(wrapper.find('.card-body p').exists()).toBe(false)
     expect(wrapper.get('h3').text()).toBe('Книга')
-    expect(wrapper.get('.wish-note-excerpt').text()).toBe('О природе')
+    expect(wrapper.find('.wish-note-excerpt').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('О природе')
+    expect(wrapper.text()).not.toContain('На заметку')
   })
   it('marks archived cards without inventing management or link controls', () => {
     const wrapper = mount(ItemCard, {
