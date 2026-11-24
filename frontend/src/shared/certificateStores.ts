@@ -1,17 +1,24 @@
-export const certificateStores = [
-  { name: 'Ozon', host: 'ozon.ru', note: 'Покупки и подарки' },
-  { name: 'Wildberries', host: 'wildberries.ru', note: 'Одежда, дом и многое другое' },
-  { name: 'Яндекс Маркет', host: 'market.yandex.ru', note: 'Техника и товары для дома' },
-  { name: 'Золотое Яблоко', host: 'goldapple.ru', note: 'Косметика и парфюмерия' },
-  { name: 'Лэтуаль', host: 'letu.ru', note: 'Красота и уход' },
-  { name: 'Лемана ПРО', host: 'lemanapro.ru', note: 'Дом, ремонт и сад' },
-  { name: 'М.Видео', host: 'mvideo.ru', note: 'Техника и электроника' },
-  { name: 'DNS', host: 'dns-shop.ru', note: 'Компьютеры и техника' },
-  { name: 'Спортмастер', host: 'sportmaster.ru', note: 'Спорт и активный отдых' },
-  { name: 'Читай-город', host: 'chitai-gorod.ru', note: 'Книги и вдохновение' },
-  { name: 'Детский мир', host: 'detmir.ru', note: 'Для детей и родителей' },
-  { name: 'Lamoda', host: 'lamoda.ru', note: 'Одежда и аксессуары' },
+import type { Item } from './api'
+
+export interface CertificateStore {
+  name: string
+  host: string
+  icon: string
+}
+
+export const certificateStores: CertificateStore[] = [
+  { name: 'Ozon', host: 'ozon.ru', icon: '/store-icons/ozon.svg' },
+  { name: 'Wildberries', host: 'wildberries.ru', icon: '/store-icons/wildberries.svg' },
+  { name: 'Яндекс Маркет', host: 'market.yandex.ru', icon: '/store-icons/yandex-market.svg' },
+  { name: 'Золотое Яблоко', host: 'goldapple.ru', icon: '/store-icons/golden-apple.svg' },
+  { name: 'Лэтуаль', host: 'letu.ru', icon: '/store-icons/letu.svg' },
+  { name: 'Лемана ПРО', host: 'lemanapro.ru', icon: '/store-icons/lemana-pro.svg' },
+  { name: 'М.Видео', host: 'mvideo.ru', icon: '/store-icons/mvideo.svg' },
+  { name: 'DNS', host: 'dns-shop.ru', icon: '/store-icons/dns.svg' },
+  { name: 'Спортмастер', host: 'sportmaster.ru', icon: '/store-icons/sportmaster.svg' },
+  { name: 'Lamoda', host: 'lamoda.ru', icon: '/store-icons/lamoda.svg' },
 ]
+
 export function certificateStore(url: string) {
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/^www\./, '')
@@ -19,4 +26,12 @@ export function certificateStore(url: string) {
   } catch {
     return undefined
   }
+}
+
+export function certificateIcon(
+  item: Pick<Item, 'item_type' | 'url' | 'image_id' | 'image_is_icon'>,
+) {
+  if (item.item_type !== 'certificate') return null
+  if (item.image_id && !item.image_is_icon) return null
+  return certificateStore(item.url || '')?.icon || null
 }
