@@ -28,6 +28,13 @@ async function paste(wrapper: ReturnType<typeof form>, text: string) {
   await flushPromises()
 }
 
+async function pastePhoto(wrapper: ReturnType<typeof form>, text: string) {
+  await wrapper.get('#photo-url').trigger('paste', {
+    clipboardData: { getData: () => text },
+  })
+  await flushPromises()
+}
+
 describe('ItemForm', () => {
   beforeEach(() => {
     vi.mocked(send).mockReset()
@@ -174,9 +181,7 @@ describe('ItemForm', () => {
     vi.mocked(send).mockResolvedValueOnce({ id: 'imported-photo' }).mockResolvedValueOnce({})
     const wrapper = form()
     await wrapper.get('input[maxlength="200"]').setValue('Подарок с фото')
-    await wrapper.get('#photo-url').setValue(' https://example.com/photo.jpg ')
-    await wrapper.get('.photo-url-row button').trigger('click')
-    await flushPromises()
+    await pastePhoto(wrapper, ' https://example.com/photo.jpg ')
     expect(send).toHaveBeenNthCalledWith(1, '/media/from-url', {
       url: 'https://example.com/photo.jpg',
     })
@@ -190,6 +195,86 @@ describe('ItemForm', () => {
     )
   })
 
+  it('opens the file picker from photo icons and keeps only one file input', async () => {
+    const wrapper = form()
+    expect(wrapper.find('.photo-url-toggle').exists()).toBe(true)
+    expect(wrapper.find('.photo-url-submit').exists()).toBe(false)
+    const file = wrapper.get('input[type="file"]')
+    expect(file.attributes('multiple')).toBeUndefined()
+    const pick = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    await wrapper.get('.upload-button').trigger('click')
+    expect(pick).toHaveBeenCalledTimes(1)
+    vi.mocked(api).mockResolvedValueOnce({ id: 'chosen-photo' })
+    Object.defineProperty(file.element, 'files', {
+      value: [new File(['photo'], 'photo.png', { type: 'image/png' })],
+    })
+    await file.trigger('change')
+    await flushPromises()
+    await wrapper.get('.photo-edit').trigger('click')
+    expect(pick).toHaveBeenCalledTimes(2)
+    expect(wrapper.findAll('input[type="file"]')).toHaveLength(1)
+    pick.mockRestore()
+  })
+
+  it('loads a manually entered photo URL through the explicit button without submitting the wish', async () => {
+    vi.mocked(send).mockResolvedValueOnce({ id: 'manual-photo' })
+    const wrapper = form()
+    await wrapper.get('.photo-url-toggle').trigger('click')
+    expect(wrapper.get('.photo-url-toggle').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('.photo-url-submit').attributes('disabled')).toBeDefined()
+    await wrapper.get('#photo-url').setValue('https://example.com/manual.jpg')
+    await wrapper.get('.photo-url-submit').trigger('click')
+    await flushPromises()
+    expect(send).toHaveBeenCalledExactlyOnceWith('/media/from-url', {
+      url: 'https://example.com/manual.jpg',
+    })
+    expect(wrapper.get('.upload-area img').attributes('src')).toBe('/api/v1/media/manual-photo')
+    expect(wrapper.get('.photo-url-toggle').attributes('aria-expanded')).toBe('false')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('rejects unsupported files before upload and keeps the existing photo', async () => {
+    const wrapper = form()
+    vi.mocked(send).mockResolvedValueOnce({ image_id: 'existing-photo' })
+    await paste(wrapper, 'https://example.com/item')
+    vi.mocked(api).mockClear()
+    const file = wrapper.get('input[type="file"]')
+    Object.defineProperty(file.element, 'files', {
+      value: [new File(['document'], 'document.pdf', { type: 'application/pdf' })],
+    })
+    await file.trigger('change')
+    await flushPromises()
+    expect(api).not.toHaveBeenCalled()
+    expect(wrapper.get('.photo-error').text()).toContain('JPEG, PNG или WebP')
+    expect(wrapper.get('.upload-area img').attributes('src')).toBe('/api/v1/media/existing-photo')
+    wrapper.unmount()
+  })
+
+  it('reveals field clear buttons only after the field loses focus', async () => {
+    const wrapper = form()
+    const title = wrapper.get('input[maxlength="200"]')
+    const note = wrapper.get('textarea')
+    const clearTitle = () => wrapper.find('[aria-label="Очистить название"]')
+    const clearNote = () => wrapper.find('[aria-label="Очистить заметку"]')
+    await title.setValue('Название')
+    await note.setValue('Заметка')
+    expect(clearTitle().exists()).toBe(true)
+    expect(clearNote().exists()).toBe(true)
+    await title.trigger('focus')
+    expect(clearTitle().exists()).toBe(false)
+    await title.trigger('blur')
+    expect(clearTitle().exists()).toBe(true)
+    await note.trigger('focus')
+    expect(clearNote().exists()).toBe(false)
+    await note.trigger('blur')
+    expect(clearNote().exists()).toBe(true)
+    await clearTitle().trigger('click')
+    expect((title.element as HTMLInputElement).value).toBe('')
+    await clearNote().trigger('click')
+    expect((note.element as HTMLTextAreaElement).value).toBe('')
+  })
+
   it('keeps the current photo after a failed URL load', async () => {
     vi.mocked(api).mockResolvedValueOnce({ id: 'original-photo' })
     vi.mocked(send).mockRejectedValueOnce(new Error('Сайт недоступен'))
@@ -200,9 +285,7 @@ describe('ItemForm', () => {
     })
     await file.trigger('change')
     await flushPromises()
-    await wrapper.get('#photo-url').setValue('https://example.com/photo.jpg')
-    await wrapper.get('.photo-url-row button').trigger('click')
-    await flushPromises()
+    await pastePhoto(wrapper, 'https://example.com/photo.jpg')
     expect(wrapper.get('.upload-area img').attributes('src')).toBe('/api/v1/media/original-photo')
     expect(wrapper.get('[role="alert"]').text()).toContain('Сайт недоступен')
     expect(wrapper.get('#photo-url-hint').attributes('role')).toBe('alert')
@@ -223,8 +306,7 @@ describe('ItemForm', () => {
     )
     const wrapper = form()
     await wrapper.get('input[type="url"]').setValue('https://example.com/product')
-    await wrapper.get('#photo-url').setValue('https://example.com/photo.jpg')
-    await wrapper.get('.photo-url-row button').trigger('click')
+    await pastePhoto(wrapper, 'https://example.com/photo.jpg')
     expect(wrapper.get('.upload-button').attributes('disabled')).toBeDefined()
     expect(wrapper.get('.metadata-button').attributes('disabled')).toBeDefined()
     expect(wrapper.get('.form-actions .primary').attributes('disabled')).toBeDefined()
@@ -322,7 +404,7 @@ describe('ItemForm', () => {
         'personal-description-hint',
       )
       expect(wrapper.get('#personal-description-hint').text()).toBe(
-        `${[...description].length} / 500 · Только ваши слова`,
+        `Ваши слова · ${[...description].length} / 500`,
       )
       await wrapper.get('.metadata-button').trigger('click')
       await flushPromises()
@@ -368,9 +450,7 @@ describe('ItemForm', () => {
       .mockRejectedValueOnce(new Error('Ошибка загрузки фото'))
       .mockRejectedValueOnce(new Error('Ошибка автозаполнения'))
     const wrapper = form()
-    await wrapper.get('#photo-url').setValue('https://example.com/photo.jpg')
-    await wrapper.get('.photo-url-row button').trigger('click')
-    await flushPromises()
+    await pastePhoto(wrapper, 'https://example.com/photo.jpg')
     await wrapper.get('input[type="url"]').setValue('https://example.com/product')
     await wrapper.get('.metadata-button').trigger('click')
     await flushPromises()
@@ -400,15 +480,15 @@ describe('ItemForm', () => {
     expect(wrapper.find('[role="status"]').exists()).toBe(false)
   })
 
-  it('replaces the upload hint with the file error', async () => {
+  it('shows the file error on the upload area', async () => {
     const wrapper = form()
     const file = wrapper.get('input[type="file"]')
     Object.defineProperty(file.element, 'files', {
       value: [new File([new Uint8Array(5242881)], 'large.png', { type: 'image/png' })],
     })
     await file.trigger('change')
-    expect(wrapper.get('.upload-button small').attributes('role')).toBe('alert')
-    expect(wrapper.get('.upload-button small').text()).toBe('Фото должно быть не больше 5 МБ')
+    expect(wrapper.get('.photo-error').attributes('role')).toBe('alert')
+    expect(wrapper.get('.photo-error').text()).toBe('Фото должно быть не больше 5 МБ')
     expect(wrapper.find('.photo-section .inline-error').exists()).toBe(false)
   })
 
@@ -462,26 +542,28 @@ describe('ItemForm', () => {
       }),
     )
   })
-  it('toggles the inline minimum price button and keeps its amount', async () => {
+  it('keeps the mode select inside one full-width price field', async () => {
     vi.mocked(send).mockResolvedValue({})
     const wrapper = form()
     await wrapper.get('input[type="number"]').setValue('1500')
-    await wrapper.get('.price-from').trigger('click')
-    expect(wrapper.get('.price-from').attributes('aria-pressed')).toBe('true')
+    const field = wrapper.get('.price-value').element
+    const mode = wrapper.get('.price-mode')
+    expect(mode.element.tagName).toBe('SELECT')
+    expect(mode.element.parentElement).toBe(field)
+    expect((mode.element as HTMLSelectElement).value).toBe('approximate')
+    expect(field.contains(wrapper.get('#item-price').element)).toBe(true)
+    expect(wrapper.find('.price-clear').exists()).toBe(false)
+    expect(wrapper.get('.price-currency').text()).toBe('₽')
+    await mode.setValue('from')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(send).toHaveBeenLastCalledWith(
       '/items',
       expect.objectContaining({ price: '1500', price_mode: 'from' }),
     )
-    await wrapper.get('.price-from').trigger('click')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-    expect(send).toHaveBeenLastCalledWith(
-      '/items',
-      expect.objectContaining({ price: '1500', price_mode: 'approximate' }),
-    )
-    expect(wrapper.text()).not.toMatch(/Примерно|Примерная|Личное описание/)
+    await mode.setValue('approximate')
+    expect((wrapper.get('.price-mode').element as HTMLSelectElement).value).toBe('approximate')
+    expect(wrapper.get('.price-currency').text()).toBe('₽')
   })
   it('automatically loads a certificate shop photo after typing without blur', async () => {
     vi.useFakeTimers()
@@ -515,7 +597,7 @@ describe('ItemForm', () => {
       expect((wrapper.get('input[type="number"]').element as HTMLInputElement).value).toBe(
         '1290.50',
       )
-      expect(wrapper.get('.price-from').attributes('aria-pressed')).toBe('true')
+      expect((wrapper.get('.price-mode').element as HTMLSelectElement).value).toBe('from')
       expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('')
     },
   )
@@ -527,7 +609,7 @@ describe('ItemForm', () => {
       'С сайта',
     )
     expect((wrapper.get('input[type="number"]').element as HTMLInputElement).value).toBe('500')
-    expect(wrapper.get('.price-from').attributes('aria-pressed')).toBe('false')
+    expect((wrapper.get('.price-mode').element as HTMLSelectElement).value).toBe('approximate')
     vi.mocked(send).mockResolvedValueOnce({})
     await paste(wrapper, 'Другая подпись 2400 ₽ https://example.com/second')
     expect((wrapper.get('input[maxlength="200"]').element as HTMLInputElement).value).toBe(

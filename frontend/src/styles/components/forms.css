@@ -1,79 +1,350 @@
 /* Wish editor, photo upload and price controls. */
 @layer components {
+  .wish-form-header {
+    @apply flex min-h-18 items-center gap-3 py-3;
+  }
+  .wish-form-title {
+    @apply font-editorial text-2xl leading-tight tracking-tight;
+  }
+  .wish-form-header.photo-header {
+    @apply pointer-events-none absolute left-7 top-7 z-30 min-h-0 p-0;
+  }
+  .photo-header .form-back {
+    @apply pointer-events-auto size-10 border border-white/30 bg-paper/75 shadow-sm backdrop-blur-xl dark:bg-[#202823]/75;
+  }
   .form-intro {
     @apply mb-5 text-xs leading-relaxed text-muted;
   }
   .wish-editor-layout {
-    @apply grid gap-x-6 min-[641px]:grid-cols-[minmax(0,1fr)_220px];
+    @apply grid gap-x-6;
   }
   .wish-editor-fields {
-    @apply min-w-0;
+    @apply flex min-w-0 flex-col;
   }
   .form-section {
     @apply mb-5;
   }
   .item-form label {
-    @apply block text-sm;
+    @apply block text-sm font-semibold;
   }
   .item-form label > span {
     @apply text-xs text-muted;
+  }
+  .item-form input,
+  .item-form textarea,
+  .item-form select {
+    @apply font-normal;
   }
   .item-form label > input,
   .item-form label > textarea {
     @apply mt-2;
   }
+  .store-select {
+    @apply relative;
+  }
+  .store-select__trigger {
+    @apply flex min-h-11 w-full items-center gap-2 rounded border border-line bg-surface px-3 text-left text-sm dark:bg-[#202823];
+  }
+  .store-select__icon {
+    @apply size-6 shrink-0 rounded object-contain;
+  }
+  .store-select__value {
+    @apply min-w-0 flex-1 truncate;
+  }
+  .store-select__list {
+    @apply absolute inset-x-0 top-full z-40 mt-1 max-h-60 overflow-y-auto rounded border border-line bg-surface p-1 shadow-lg dark:bg-[#2b362e];
+  }
+  .store-select__option {
+    @apply flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-forest/10 dark:hover:bg-paper/10;
+  }
+  .store-select__option.selected {
+    @apply bg-forest/10 font-semibold text-forest dark:bg-paper/10 dark:text-sand;
+  }
+  .store-select__host {
+    @apply shrink-0 text-xs text-muted;
+  }
+  .form-field__control {
+    @apply relative mt-2 flex items-center gap-2;
+  }
+  .form-field__control > input,
+  .form-field__control > textarea,
+  .form-field__control > select {
+    @apply min-w-0 flex-1;
+  }
+  .search-input .form-field__control,
+  .photo-url-field .form-field__control {
+    @apply mt-0;
+  }
+  .form-field__control.clearable > input,
+  .form-field__control.clearable > textarea {
+    @apply mt-0;
+  }
   .input-with-icon {
-    @apply mt-2 flex items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-[#202823];
+    @apply relative mt-2 flex items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-[#202823];
   }
   .input-with-icon input {
-    @apply border-0 bg-transparent px-0 focus:ring-0;
+    @apply min-w-0 flex-1 border-0 bg-transparent px-0 pr-8 focus:ring-0;
+  }
+  .clearable {
+    @apply relative;
+  }
+  .clearable input,
+  .clearable textarea {
+    @apply mt-2 w-full pr-9;
+  }
+  .clear-field {
+    @apply absolute right-2 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-forest/10 dark:hover:bg-paper/10;
+  }
+  .clearable textarea + .clear-field {
+    @apply top-4 translate-y-0;
+  }
+  .item-form textarea.auto-grow {
+    @apply resize-none overflow-hidden;
   }
   .metadata-button {
     @apply mt-3 flex items-center gap-2 text-xs text-forest dark:text-sand;
   }
   .photo-section {
-    @apply min-w-0;
-  }
-  .editor-section-label {
-    @apply mb-3 block;
+    @apply relative -mx-1 pt-3;
   }
   .upload-area {
-    @apply relative flex min-h-24 items-center justify-center gap-3 rounded border border-dashed border-[#bfc6b3] bg-forest/5 p-3 min-[641px]:min-h-48 min-[641px]:flex-col;
+    @apply relative flex w-full flex-col items-center justify-center overflow-hidden border border-forest/10 bg-forest px-5 pb-20 pt-10 text-paper dark:bg-forest dark:text-paper;
+    border-radius: 32px;
+    height: clamp(340px, 52svh, 500px);
   }
-  .upload-area > img {
-    @apply h-20 w-20 object-contain min-[641px]:h-36 min-[641px]:w-full;
+  .upload-area.has-photo {
+    @apply border-transparent bg-[#202823];
+  }
+  .upload-area.has-photo::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0;
+    background: linear-gradient(180deg, rgb(0 0 0 / 12%), transparent 35%, rgb(0 0 0 / 35%));
+  }
+  .upload-area > img:not(.site-icon) {
+    @apply absolute inset-0 h-full w-full object-cover;
+  }
+  .upload-area > img.site-icon {
+    @apply mx-auto object-contain;
   }
   .upload-button {
-    @apply flex items-center gap-3 text-left text-sm;
+    @apply z-10 flex min-h-11 flex-col items-center gap-3 rounded-xl px-5 py-3 text-center text-sm font-semibold hover:bg-forest/5 dark:hover:bg-paper/5;
   }
-  .upload-button small {
-    @apply mt-1 block text-[10px] text-muted;
+  .upload-icon {
+    @apply flex size-14 items-center justify-center rounded-full bg-paper/80 shadow-sm dark:bg-paper/10;
   }
-  .remove-image {
-    @apply absolute right-1 top-1 size-7;
+  .upload-hint {
+    @apply z-10 mt-2 text-center text-xs opacity-75;
+  }
+  .photo-error {
+    @apply absolute inset-x-3 bottom-20 z-20 rounded-lg bg-paper/95 px-3 py-2 text-center text-xs text-[#a04432] shadow dark:bg-[#202823]/95;
+  }
+  .photo-progress {
+    @apply absolute bottom-20 z-20 rounded-full bg-paper px-4 py-2 text-sm text-ink shadow dark:bg-[#202823] dark:text-paper;
+  }
+  .certificate-close {
+    @apply absolute right-4 top-4 z-20 size-10 rounded-full bg-paper/90 text-ink shadow dark:bg-[#202823]/90 dark:text-paper min-[641px]:right-6 min-[641px]:top-6;
+  }
+  .form-back {
+    @apply relative size-11 shrink-0 rounded-full bg-surface text-ink dark:bg-[#2b362e] dark:text-paper;
+  }
+  .photo-actions {
+    @apply absolute right-4 top-4 z-20 flex gap-2;
+  }
+  .photo-edit,
+  .photo-delete {
+    @apply size-10 rounded-full border border-white/30 bg-paper/75 text-ink shadow-sm backdrop-blur-xl dark:bg-[#202823]/75 dark:text-paper;
   }
   .photo-url-details {
-    @apply mt-3 text-xs text-muted;
+    @apply absolute inset-x-5 bottom-5 z-20 flex items-center gap-0 rounded-full border border-white/30 bg-paper/75 p-0 text-xs shadow-sm backdrop-blur-xl dark:bg-[#202823]/75;
+    width: 40px;
+    min-height: 40px;
+    left: auto;
+    transition: width 280ms ease, background-color 220ms ease, padding 220ms ease;
   }
-  .photo-url-area {
-    @apply mt-3 grid gap-2;
+  .photo-url-details.open {
+    @apply gap-2 rounded-3xl;
+    width: calc(100% - 40px);
   }
-  .photo-url-row {
-    @apply mt-2 flex flex-wrap gap-2;
+  .photo-url-details.open .photo-url-toggle {
+    @apply size-10 min-h-10 px-0;
+  }
+  .photo-url-toggle {
+    @apply flex size-10 min-h-10 shrink-0 items-center justify-center rounded-full bg-transparent p-0 text-sm text-ink hover:bg-forest/5 dark:text-paper dark:hover:bg-paper/5;
+    transition: width 260ms ease, background-color 180ms ease;
+  }
+  .photo-url-field {
+    @apply order-first min-w-0 overflow-hidden;
+    flex: 0 1 0%;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(8px);
+    transition: flex 260ms ease, opacity 200ms ease, transform 260ms ease, visibility 260ms;
+  }
+  .photo-url-details.open .photo-url-field {
+    flex: 1 1 0%;
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+  }
+  .photo-url-field > .form-field {
+    @apply w-full;
+  }
+  .photo-url-field input {
+    @apply w-full min-w-0 border-0 bg-transparent text-base focus:ring-0;
+  }
+  .certificate-store-panel {
+    @apply relative -mx-1 mb-5 mt-3 flex flex-col justify-end overflow-hidden rounded-[32px] pb-3 pt-16 text-center text-paper;
+    min-height: clamp(340px, 52svh, 500px);
+    background: radial-gradient(ellipse at 10% 10%, #a4ad83, transparent 60%),
+      radial-gradient(ellipse at 95% 85%, #837b95, transparent 65%), #354f40;
+  }
+  .certificate-offer {
+    background: linear-gradient(110deg, #354f40 0%, #667c60 48%, #9ba78a 100%);
+    color: #faf7ee;
+    box-shadow: inset 0 0 16px rgb(255 255 255 / 35%), 0 8px 0 -4px rgb(114 121 107 / 16%), 0 16px 0 -9px rgb(114 121 107 / 10%);
+  }
+  .certificate-offer .certificate-carousel-cover {
+    @apply py-3;
+  }
+  .certificate-offer .certificate-offer-tile {
+    @apply relative w-auto justify-center border border-white/20 bg-white/15 p-0.5 shadow-none backdrop-blur-none;
+    transform: rotate(5deg);
+    transition: none;
+  }
+  .certificate-offer-tile + .certificate-offer-tile,
+  .certificate-offer-tile + .certificate-carousel-add {
+    margin-left: -20px;
+  }
+  .certificate-offer .certificate-carousel-add {
+    @apply relative;
+    transform: rotate(5deg);
+    transition: none;
+  }
+  .certificate-store-panel h3 {
+    @apply line-clamp-2 px-6 text-2xl font-semibold;
+    overflow-wrap: anywhere;
+  }
+  .certificate-store-intro {
+    @apply my-auto py-5;
+  }
+  .certificate-store-intro > p {
+    @apply mx-auto mb-7 mt-2 max-w-72 px-4 text-sm text-white/75;
+  }
+  .certificate-store-carousel {
+    @apply mt-2 flex shrink-0 gap-3 overflow-x-auto px-5 pb-2;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 30%) transparent;
+  }
+  .certificate-store-tile {
+    @apply flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-white/20 bg-white/15 px-2 py-4 text-paper backdrop-blur-md transition-all hover:bg-white/25;
+    scroll-snap-align: center;
+  }
+  .certificate-store-tile.selected {
+    @apply border-white bg-white/30 shadow-md;
+  }
+  .certificate-store-tile img {
+    @apply size-14 rounded-2xl bg-white object-contain;
+  }
+  .certificate-store-tile span {
+    @apply block w-full truncate text-center text-xs leading-tight;
+  }
+  .photo-url-field .clear-field {
+    @apply relative right-auto top-auto size-6 shrink-0 translate-y-0;
+  }
+  .photo-url-error {
+    @apply mt-2 text-sm text-[#a04432];
+  }
+  .photo-link-icon-enter-active,
+  .photo-link-icon-leave-active {
+    transition: opacity 120ms ease, transform 120ms ease;
+  }
+  .photo-link-icon-enter-from,
+  .photo-link-icon-leave-to {
+    opacity: 0;
+    transform: rotate(-90deg) scale(.7);
+  }
+  .item-form input[aria-invalid='true'],
+  .item-form textarea[aria-invalid='true'],
+  .item-form select[aria-invalid='true'] {
+    border: 1px solid #a04432;
+    --tw-ring-color: rgb(160 68 50 / 15%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .photo-url-details,
+    .photo-url-toggle,
+    .photo-url-field {
+      transition: none;
+    }
+    .photo-link-icon-enter-active,
+    .photo-link-icon-leave-active {
+      transition: none;
+    }
+  }
+  .item-form .type-switch {
+    @apply mt-5;
+  }
+  .personal-description .description-hint {
+    @apply mt-1 text-right;
   }
   .details-section {
-    @apply mt-5 grid gap-4 border-t border-line pt-5 min-[641px]:col-span-2 min-[641px]:grid-cols-[minmax(0,1fr)_220px];
+    @apply grid gap-4 border-t border-line pt-5;
   }
-  .price-input-row {
-    @apply mt-2 flex items-center gap-1 rounded border border-line bg-surface p-1 dark:bg-[#202823];
+  .most-wanted-toggle {
+    @apply relative inline-flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-full border border-forest/20 px-5 py-3 text-sm font-semibold text-paper;
+    background-image: linear-gradient(110deg, #28553f 0%, #789849 30%, #c4ae65 60%, #45816a 82%, #28553f 100%);
+    background-size: 300% 100%;
+    transition: color 220ms ease, box-shadow 220ms ease;
   }
-  .price-input-row input {
-    @apply w-0 min-w-0 flex-1 border-0 bg-transparent px-2 focus:ring-0;
+  .most-wanted-toggle.selected {
+    @apply border-forest/40;
+    animation: wish-shimmer 5s ease-in-out infinite;
+    box-shadow: 0 0 0 3px rgb(102 124 85 / 15%);
   }
-  .price-from {
-    @apply min-h-10 shrink-0 rounded border border-line px-2 text-xs;
+  .most-wanted-toggle.selected svg {
+    animation: wish-heart 350ms ease;
   }
-  .price-from[aria-pressed='true'] {
-    @apply border-forest bg-forest text-paper;
+  @keyframes wish-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes wish-heart {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(1.25); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .most-wanted-toggle,
+    .most-wanted-toggle.selected svg {
+      animation: none;
+      transition: none;
+    }
+  }
+  .item-form .form-actions {
+    @apply -mx-4 w-auto bg-transparent px-4 pb-3;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .item-form .form-actions .secondary {
+    color: var(--ink);
+  }
+  .item-form .form-cancel {
+    @apply shrink-0 bg-paper px-4 hover:bg-surface dark:bg-[#2b362e];
+  }
+  .price-value {
+    @apply mt-2 flex w-full min-w-0 items-center rounded border border-line bg-surface px-3 py-2 dark:bg-[#202823];
+  }
+  .price-value input {
+    @apply w-0 min-w-0 flex-1 border-0 bg-transparent px-4 text-left focus:ring-0;
+  }
+  .price-options {
+    @apply flex shrink-0 items-center gap-1 border-r border-line pr-3;
+  }
+  .price-option {
+    @apply inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-transparent px-2 text-sm text-muted transition-colors hover:bg-forest/5 dark:hover:bg-paper/5;
+  }
+  .price-option.selected {
+    @apply border-forest bg-forest text-paper hover:bg-forest dark:border-sand dark:bg-sand dark:text-[#202823];
+  }
+  .price-currency {
+    @apply ml-auto shrink-0 px-1 text-lg font-semibold leading-none text-muted;
   }
 }

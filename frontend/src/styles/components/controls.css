@@ -55,7 +55,7 @@
     @apply grid gap-2;
   }
   .form-actions {
-    @apply mt-5 flex flex-wrap justify-end gap-2 border-t border-line pt-4;
+    @apply sticky bottom-0 z-20 mt-5 flex w-full gap-2 bg-transparent pt-3;
   }
   .loading-grid {
     @apply grid grid-cols-2 gap-3;

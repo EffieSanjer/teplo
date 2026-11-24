@@ -1,6 +1,25 @@
 <script setup lang="ts">
-import { nextTick, reactive, ref, watch } from 'vue';
-import { Gift, ImagePlus, Lightbulb, Link, LoaderCircle, Sparkles, X } from 'lucide-vue-next';
+import {
+  computed,
+  nextTick,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+  type ComponentPublicInstance,
+} from 'vue';
+import {
+  ArrowLeft,
+  Gift,
+  Heart,
+  ImagePlus,
+  Lightbulb,
+  Link,
+  Pencil,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-vue-next';
 import Modal from './Modal.vue';
 import {
   api,
@@ -14,7 +33,7 @@ import {
 import { extractSharedDetails, type SharedDetails } from '../shared/sharedLink';
 import WishImage from './WishImage.vue';
 import { certificateStore, certificateStores } from '../shared/certificateStores';
-import { itemTitle } from '../shared/api';
+import { AppButton, FieldMessage, FormActions, FormField, PriceField } from './ui';
 
 const props = defineProps<{
   item?: Item;
@@ -31,23 +50,59 @@ const form = reactive({
   price: props.item?.price?.toString() || '',
   currency: props.item?.currency || 'RUB',
   image_id: props.item?.image_id || (null as string | null),
-  price_mode: props.item?.price_mode || ('approximate' as 'approximate' | 'from'),
+  price_mode: props.item?.price_mode || ('exact' as 'exact' | 'approximate' | 'from'),
   surprise_visibility: props.item?.surprise_visibility || ('friends' as 'friends' | 'private'),
 });
 const saving = ref(false),
   fetching = ref(false),
   uploading = ref(false);
+const mostWanted = ref(props.item?.most_wanted || false);
+const sourcePlaceholder = 'https://магазин.ru/тот-самый-подарок';
 const sourceError = ref(''),
   sourceHint = ref(''),
   photoError = ref(''),
   photoUrlError = ref(''),
   saveError = ref('');
-const sourceFeedback = ref<HTMLElement>(),
-  photoFeedback = ref<HTMLElement>(),
-  photoUrlFeedback = ref<HTMLElement>(),
-  saveFeedback = ref<HTMLElement>();
+const sourceFeedback = ref<ComponentPublicInstance>(),
+  photoFeedback = ref<ComponentPublicInstance>(),
+  saveFeedback = ref<ComponentPublicInstance>();
 const fileInput = ref<HTMLInputElement>();
 const photoUrl = ref('');
+const photoUrlOpen = ref(false);
+const photoUrlInput = ref<InstanceType<typeof FormField>>();
+const photoUrlToggle = ref<InstanceType<typeof AppButton>>();
+const focusedField = ref('');
+const descriptionLength = computed(() => [...form.description].length);
+const descriptionLimit = computed(() => (form.item_type === 'certificate' ? 100 : 500));
+const descriptionOverLimit = computed(() => descriptionLength.value > descriptionLimit.value);
+const customStoreTitle = computed(() =>
+  form.item_type === 'certificate' && !certificateStore(form.url) && form.title.trim()
+    ? form.title.split(/\s*(?:--|—|–|\|)\s*|\s+-\s+/)[0]?.trim() || form.title.trim()
+    : '',
+);
+const noteInput = ref<InstanceType<typeof FormField>>();
+const formTitle = computed(() =>
+  props.item
+    ? 'Редактировать желание'
+    : form.item_type === 'certificate'
+      ? 'Магазин для сертификата'
+      : props.listType === 'surprise'
+        ? 'Маленький сюрприз'
+        : 'Новое желание',
+);
+
+function resizeNote() {
+  const field = noteInput.value?.control as HTMLTextAreaElement | undefined;
+  if (!field) return;
+  field.style.height = 'auto';
+  field.style.height = `${field.scrollHeight}px`;
+}
+
+watch(
+  () => form.description,
+  () => void nextTick(resizeNote),
+);
+onMounted(() => void nextTick(() => requestAnimationFrame(resizeNote)));
 const iconImageId = ref(props.item?.image_is_icon ? props.item.image_id : null);
 watch(
   () => form.item_type,
@@ -82,24 +137,23 @@ watch(
   { flush: 'sync' },
 );
 
-watch(
-  () => [form.url, form.item_type],
-  (_, __, onCleanup) => {
-    if (form.item_type !== 'certificate' || !form.url.trim()) return;
-    const timer = setTimeout(() => autofillLink(), 700);
-    onCleanup(() => clearTimeout(timer));
-  },
-  { immediate: true },
-);
 
-async function revealFeedback(target: typeof sourceFeedback) {
+type FeedbackRef = { value: unknown };
+
+function feedbackElement(target: FeedbackRef) {
+  const value = target.value as HTMLElement | ComponentPublicInstance | undefined;
+  if (!value) return undefined;
+  return '$el' in value ? (value.$el as HTMLElement) : value;
+}
+
+async function revealFeedback(target: FeedbackRef) {
   await nextTick();
   if (target === sourceFeedback) {
     // Keep the title, source URL and its feedback together, not just the message.
-    target.value?.closest('dialog')?.scrollTo({ top: 0, behavior: 'instant' });
+    feedbackElement(target)?.closest('dialog')?.scrollTo({ top: 0, behavior: 'instant' });
     return;
   }
-  target.value?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+  feedbackElement(target)?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
 }
 
 function scrollFocusedField(event: FocusEvent) {
@@ -111,13 +165,103 @@ function scrollFocusedField(event: FocusEvent) {
 }
 
 function pasteLink(event: ClipboardEvent) {
-  sharedDetails = extractSharedDetails(event.clipboardData?.getData('text/plain') || '');
-  if (!sharedDetails) return; // Keep ordinary paste and native URL validation for unsupported text.
-  const { url } = sharedDetails;
   event.preventDefault();
+  const text = (event.clipboardData?.getData('text/plain') || '').trim();
+  sharedDetails = extractSharedDetails(text);
+  const url = sharedDetails?.url || text;
+  if (!isWebUrl(url)) {
+    sourceError.value = 'Вставьте ссылку, которая начинается с https:// или http://';
+    return;
+  }
+  sourceError.value = '';
   form.url = url;
   pendingSharedUrl = url;
   autofillLink(true);
+}
+
+function isWebUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return /^https?:\/\/[^\s\\]+$/i.test(value) && !!url.hostname && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function updateSource(value: string) {
+  form.url = value;
+  sourceError.value = '';
+}
+
+function onPhotoUrlKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void uploadFromUrl();
+  }
+}
+
+function pastePhotoUrl(event: ClipboardEvent) {
+  event.preventDefault();
+  const text = event.clipboardData?.getData('text/plain') || '';
+  const url = extractSharedDetails(text)?.url || text.match(/https?:\/\/[^\s]+/)?.[0];
+  if (!url || !isWebUrl(url)) {
+    photoUrlError.value = 'Вставьте ссылку на изображение, начиная с https://';
+    return;
+  }
+  photoUrl.value = url;
+  void uploadFromUrl();
+}
+
+function togglePhotoUrl(open = !photoUrlOpen.value) {
+  photoUrlOpen.value = open;
+  photoUrlError.value = '';
+  if (open) void nextTick(() => photoUrlInput.value?.focus());
+  else void nextTick(() => (photoUrlToggle.value?.$el as HTMLButtonElement | undefined)?.focus());
+}
+
+function selectStore(host: string) {
+  form.url = host ? `https://${host}/` : '';
+  sourceError.value = '';
+  sourceHint.value = '';
+  lastAutoUrl = form.url;
+  const store = certificateStore(form.url);
+  form.title = store?.name || '';
+  form.image_id = null;
+  iconImageId.value = null;
+}
+
+function setVisibility(value: string) {
+  form.surprise_visibility = value === 'private' ? 'private' : 'friends';
+}
+
+function onSourceBlur() {
+  focusedField.value = '';
+  if (form.url.trim() && !isWebUrl(form.url.trim())) {
+    sourceError.value = 'Укажите ссылку целиком: https://example.com';
+    return;
+  }
+  autofillLink();
+}
+
+function choosePhoto() {
+  if (uploading.value || fetching.value || saving.value) return;
+  fileInput.value?.click();
+}
+
+function removePhoto() {
+  if (uploading.value || fetching.value || saving.value) return;
+  form.image_id = null;
+  iconImageId.value = null;
+  photoUrl.value = '';
+  photoUrlOpen.value = false;
+  photoError.value = '';
+  photoUrlError.value = '';
+}
+
+function onAreaClick(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  if (target.closest('button, input, textarea, select, a, .photo-url-details')) return;
+  choosePhoto();
 }
 
 function autofillLink(fromShare = false) {
@@ -146,8 +290,14 @@ async function upload(event: Event) {
   if (uploading.value || fetching.value || saving.value) return;
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
+  if (fileInput.value) fileInput.value.value = '';
   photoError.value = '';
   photoUrlError.value = '';
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    photoError.value = 'Выберите изображение JPEG, PNG или WebP';
+    void revealFeedback(photoFeedback);
+    return;
+  }
   if (file.size > 5242880) {
     photoError.value = 'Фото должно быть не больше 5 МБ';
     void revealFeedback(photoFeedback);
@@ -169,6 +319,10 @@ async function upload(event: Event) {
 
 async function uploadFromUrl() {
   if (uploading.value || fetching.value || saving.value || !photoUrl.value.trim()) return;
+  if (!isWebUrl(photoUrl.value.trim())) {
+    photoUrlError.value = 'Укажите ссылку на изображение целиком: https://example.com/photo.jpg';
+    return;
+  }
   uploading.value = true;
   photoError.value = '';
   photoUrlError.value = '';
@@ -176,9 +330,10 @@ async function uploadFromUrl() {
     const result = await send<{ id: string }>('/media/from-url', { url: photoUrl.value.trim() });
     form.image_id = result.id;
     photoUrl.value = '';
+    photoUrlOpen.value = false;
   } catch (e) {
     photoUrlError.value = (e as Error).message;
-    void revealFeedback(photoUrlFeedback);
+    void revealFeedback(photoUrlInput);
   } finally {
     uploading.value = false;
   }
@@ -186,6 +341,10 @@ async function uploadFromUrl() {
 
 async function metadata() {
   if (fetching.value || uploading.value || saving.value) return;
+  if (!isWebUrl(form.url.trim())) {
+    sourceError.value = 'Укажите ссылку целиком: https://example.com';
+    return;
+  }
   fetching.value = true;
   sourceError.value = '';
   sourceHint.value = '';
@@ -263,9 +422,27 @@ async function metadata() {
 
 async function save() {
   if (saving.value || uploading.value || fetching.value) return;
+  if (form.url.trim() && !isWebUrl(form.url.trim())) {
+    sourceError.value = 'Укажите ссылку целиком: https://example.com';
+    return;
+  }
   saving.value = true;
   saveError.value = '';
   try {
+    if (form.item_type === 'certificate' && form.url.trim()) {
+      const storeHost = (url: string) => {
+        try {
+          return certificateStore(url)?.host || new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+        } catch {
+          return '';
+        }
+      };
+      const existing = await api<Item[]>(`/users/${props.recipientId}/items/${props.listType}`);
+      if (existing.some((item) => item.id !== props.item?.id && !item.archived_at && item.item_type === 'certificate' && storeHost(item.url || '') === storeHost(form.url.trim()))) {
+        sourceError.value = 'Этот магазин уже добавлен в список';
+        return;
+      }
+    }
     // Hide certificate pricing without discarding amounts already stored on older records.
     const price =
       form.item_type === 'certificate'
@@ -279,30 +456,34 @@ async function save() {
           ? props.item?.currency
           : form.currency
         : null;
-    if (form.item_type === 'certificate' && [...form.description].length > 100) {
-      throw new Error('Заметка к сертификату — не больше 100 символов');
-    }
-    if (form.item_type !== 'certificate' && [...form.description.trim()].length > 500) {
-      throw new Error('Заметка к желанию — не больше 500 символов');
+    if (descriptionOverLimit.value) {
+      throw new Error(
+        form.item_type === 'certificate'
+          ? 'Заметка к сертификату — не больше 100 символов'
+          : 'Заметка к желанию — не больше 500 символов',
+      );
     }
     const payload: ItemInput = {
       item_type: form.item_type,
       title: form.title || null,
       description: form.description || null,
-      url: form.url || null,
+      url: form.url.trim() || null,
       image_id: form.image_id,
       price,
       currency: currency || null,
       price_mode: form.price_mode,
       surprise_visibility: props.listType === 'surprise' ? form.surprise_visibility : 'friends',
     };
-    if (props.item) await send(`/items/${props.item.id}`, payload, 'PUT');
-    else
-      await send('/items', {
+    const saved = props.item
+      ? await send<Item>(`/items/${props.item.id}`, payload, 'PUT')
+      : await send<Item>('/items', {
         ...payload,
         recipient_id: props.recipientId,
         list_type: props.listType,
       } satisfies ItemCreate);
+    if (props.listType === 'wishlist' && mostWanted.value !== (props.item?.most_wanted || false)) {
+      await send(`/items/${props.item?.id || saved.id}/priority`, { most_wanted: mostWanted.value });
+    }
     emit('saved');
   } catch (e) {
     saveError.value = (e as Error).message;
@@ -314,37 +495,183 @@ async function save() {
 </script>
 
 <template>
-  <Modal
-    :title="
-      item
-        ? 'Редактировать желание'
-        : form.item_type === 'certificate'
-          ? 'Магазин для сертификата'
-          : listType === 'surprise'
-            ? 'Маленький сюрприз'
-            : 'Новое желание'
-    "
-    @close="!saving && emit('close')"
-  >
-    <form class="item-form" @submit.prevent="save" @focusin="scrollFocusedField">
+  <Modal bare :title="formTitle" @close="!saving && emit('close')">
+    <form class="item-form relative px-4 pb-4" @submit.prevent="save" @focusin="scrollFocusedField">
+      <header class="wish-form-header photo-header">
+        <AppButton
+          variant="icon"
+          class="form-back"
+          label="Назад"
+          :disabled="saving"
+          @click="!saving && emit('close')"
+        >
+          <ArrowLeft :size="20" />
+        </AppButton>
+      </header>
+      <section
+        v-if="form.item_type !== 'certificate'"
+        class="photo-section"
+        aria-label="Фотография"
+      >
+        <div
+          class="upload-area"
+          :class="{ 'has-photo': form.image_id }"
+          :aria-busy="uploading"
+          @click="onAreaClick"
+        >
+          <WishImage
+            v-if="form.image_id"
+            :src="imageUrl(form.image_id)"
+            :is-icon="form.image_id === iconImageId"
+            alt="Фотография подарка"
+          /><AppButton
+            v-if="!form.image_id"
+            variant="custom"
+            class="upload-button"
+            :disabled="fetching || saving"
+            :loading="uploading"
+            :icon-size="26"
+            @click="choosePhoto"
+          >
+            <span v-if="!uploading" class="upload-icon"><ImagePlus :size="26" /></span>
+            <span>{{ uploading ? 'Загружаем…' : 'Добавить фото' }}</span>
+          </AppButton>
+          <p v-if="!form.image_id" class="upload-hint">
+            Необязательно · JPEG, PNG или WebP · до 5 МБ
+          </p>
+          <p v-if="form.image_id && uploading" class="photo-progress" role="status">
+            Загружаем фото…
+          </p>
+          <FieldMessage
+            v-if="photoError"
+            ref="photoFeedback"
+            class="photo-error"
+            kind="error"
+            role="alert"
+          >
+            {{ photoError }}
+          </FieldMessage>
+          <div v-if="form.image_id" class="photo-actions">
+            <AppButton
+              variant="icon"
+              class="photo-edit"
+              :disabled="uploading || fetching || saving"
+              label="Изменить картинку"
+              @click="choosePhoto"
+            >
+              <Pencil :size="18" />
+            </AppButton>
+            <AppButton
+              variant="icon"
+              class="photo-delete"
+              :disabled="uploading || fetching || saving"
+              label="Удалить картинку"
+              @click="removePhoto"
+            >
+              <Trash2 :size="18" />
+            </AppButton>
+          </div>
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            @change="upload"
+          />
+        </div>
+        <div class="photo-url-details" :class="{ open: photoUrlOpen }" @click.stop>
+          <AppButton
+            ref="photoUrlToggle"
+            variant="custom"
+            class="photo-url-toggle"
+            aria-controls="photo-url"
+            :expanded="photoUrlOpen"
+            :label="photoUrlOpen ? 'Свернуть поле ссылки' : 'Вставить ссылку на фото'"
+            :disabled="uploading || fetching || saving"
+            @click.stop="togglePhotoUrl()"
+          >
+            <Transition name="photo-link-icon" mode="out-in">
+              <X v-if="photoUrlOpen" key="close" :size="19" />
+              <Link v-else key="link" :size="19" />
+            </Transition>
+          </AppButton>
+          <div class="photo-url-field">
+            <FormField
+              id="photo-url"
+              ref="photoUrlInput"
+              v-model="photoUrl"
+                type="url"
+              inputmode="url"
+              :maxlength="2048"
+              placeholder="Вставьте ссылку на фото"
+              aria-label="Ссылка на фото"
+              hint-id="photo-url-hint"
+              hint-class="photo-url-error"
+              :error="photoUrlError"
+              :invalid="!!photoUrlError"
+              :disabled="!photoUrlOpen || uploading || saving"
+              :focused="focusedField === 'photoUrl'"
+                :control-attrs="{
+                  tabindex: photoUrlOpen ? 0 : -1,
+                  autocapitalize: 'none',
+                  spellcheck: false,
+                }"
+              @focus="focusedField = 'photoUrl'"
+              @blur="focusedField = ''"
+              @paste="pastePhotoUrl"
+              @keydown="onPhotoUrlKeydown"
+            >
+              <template #clear-icon><X :size="14" /></template>
+            </FormField>
+          </div>
+        </div>
+      </section>
+      <section v-if="form.item_type === 'certificate'" class="certificate-store-panel" aria-label="Популярные магазины">
+        <div class="certificate-store-intro">
+          <WishImage
+            v-if="form.image_id && !certificateStore(form.url)"
+            :src="imageUrl(form.image_id)"
+            :is-icon="true"
+            alt="Иконка магазина"
+            class="mx-auto mb-4 size-16 rounded-2xl object-contain"
+          />
+          <h3>{{ customStoreTitle || 'Подарок на ваш вкус' }}</h3>
+          <p v-if="!customStoreTitle">Выберите любимый магазин или добавьте свой по ссылке</p>
+        </div>
+        <div class="certificate-store-carousel" role="group" aria-label="Выбрать магазин">
+          <AppButton
+            v-for="store in certificateStores"
+            :key="store.host"
+            variant="custom"
+            class="certificate-store-tile"
+            :class="{ selected: certificateStore(form.url)?.host === store.host }"
+            :pressed="certificateStore(form.url)?.host === store.host"
+            :disabled="uploading || fetching || saving"
+            @click="selectStore(store.host)"
+          >
+            <img :src="store.icon" alt="" />
+            <span>{{ store.name }}</span>
+          </AppButton>
+        </div>
+      </section>
       <div v-if="form.item_type !== 'certificate'" class="type-switch">
-        <button
-          type="button"
+        <AppButton
+          variant="custom"
           :class="{ selected: form.item_type === 'idea' }"
-          :aria-pressed="form.item_type === 'idea'"
+          :pressed="form.item_type === 'idea'"
           @click="form.item_type = 'idea'"
         >
-          <Lightbulb :size="18" /><span>Идея<small>Мысль или впечатление</small></span></button
-        ><button
-          type="button"
+          <Lightbulb :size="18" /><span>Идея</span></AppButton
+        ><AppButton
+          variant="custom"
           :class="{ selected: form.item_type === 'gift' }"
-          :aria-pressed="form.item_type === 'gift'"
+          :pressed="form.item_type === 'gift'"
           @click="form.item_type = 'gift'"
         >
-          <Gift :size="18" /><span>По ссылке<small>Вещь или находка</small></span>
-        </button>
+          <Gift :size="18" /><span>По ссылке</span>
+        </AppButton>
       </div>
-      <p class="form-intro">
+      <p v-if="form.item_type !== 'certificate'" class="form-intro">
         {{
           form.item_type === 'idea'
             ? 'Запишите пожелание или подсказку — конкретную вещь выбирать не обязательно.'
@@ -354,270 +681,200 @@ async function save() {
         }}
         <span v-if="listType === 'surprise'"> Получатель сюрприз не увидит.</span>
       </p>
-      <label v-if="listType === 'surprise'" class="mb-5 block">
-        Кто видит сюрприз
-        <select v-model="form.surprise_visibility" class="mt-2 w-full">
+      <FormField
+        v-if="listType === 'surprise'"
+        :model-value="form.surprise_visibility"
+        class="mb-5 block"
+        @update:model-value="setVisibility"
+        label="Кто видит сюрприз"
+        as="select"
+        control-class="w-full"
+        hint="Получатель не увидит сюрприз при любом выборе."
+        hint-class="description-hint"
+        message-role="none"
+      >
+        <template #options>
           <option value="friends">Всем друзьям</option>
           <option value="private">Только мне</option>
-        </select>
-        <small class="description-hint">Получатель не увидит сюрприз при любом выборе.</small>
-      </label>
+        </template>
+      </FormField>
       <div
         class="wish-editor-layout"
         :class="{ 'certificate-editor': form.item_type === 'certificate' }"
       >
         <div class="wish-editor-fields">
-          <section
-            v-if="form.item_type !== 'certificate'"
-            class="form-section identity-section"
-            aria-label="Карточка желания"
+          <template
+            v-for="section in form.item_type === 'gift'
+              ? ['source', 'identity']
+              : ['identity', 'source']"
+            :key="section"
           >
-            <label
-              >Название <span>{{ form.item_type === 'idea' ? '*' : 'необязательно' }}</span><input
-                v-model="form.title"
-                placeholder="Например, что-нибудь для рисования"
-                :required="form.item_type === 'idea'"
-                maxlength="200"
-            /></label>
-          </section>
-          <section
-            class="form-section source-section"
-            :class="{ 'has-error': sourceError }"
-            aria-label="Ссылка и автозаполнение"
-          >
-            <label v-if="form.item_type === 'certificate'" class="mb-4">
-              Популярные магазины
-              <select
-                class="mt-2 w-full"
-                aria-label="Выбрать популярный магазин"
-                :value="certificateStore(form.url)?.host || ''"
-                :disabled="uploading || saving"
-                @change="
-                  form.url = ($event.target as HTMLSelectElement).value
-                    ? `https://${($event.target as HTMLSelectElement).value}/`
-                    : ''
-                "
-              >
-                <option value="">Свой магазин — вставьте ссылку ниже</option>
-                <option v-for="store in certificateStores" :key="store.host" :value="store.host">
-                  {{ store.name }} — {{ store.note }}
-                </option>
-              </select>
-            </label>
-            <label
-              >{{ form.item_type === 'certificate' ? 'Ссылка на магазин' : 'Ссылка' }}
-              <span>{{ form.item_type !== 'idea' ? '*' : 'необязательно' }}</span>
-              <div class="input-with-icon">
-                <Link :size="17" /><input
-                  v-model="form.url"
-                  type="url"
-                  placeholder="https://магазин.ru/тот-самый-подарок"
-                  :required="form.item_type !== 'idea'"
-                  maxlength="2048"
-                  aria-describedby="source-link-hint"
-                  :aria-invalid="!!sourceError"
-                  :disabled="uploading || saving"
-                  @paste="pasteLink"
-                  @blur="autofillLink()"
-                /></div
-            ></label>
-            <p
-              id="source-link-hint"
-              ref="sourceFeedback"
-              class="description-hint source-link-hint"
-              :class="{ 'field-error': sourceError }"
-              :role="sourceError ? 'alert' : sourceHint ? 'status' : undefined"
+            <section
+              v-if="section === 'identity' && form.item_type !== 'certificate'"
+              class="form-section identity-section"
+              aria-label="Карточка желания"
             >
-              {{
-                sourceError ||
-                sourceHint ||
-                (form.item_type === 'certificate'
-                  ? 'Ссылка на сайт магазина.'
-                  : 'Вставьте из «Поделиться», можно вместе с текстом.')
-              }}
-            </p>
-            <button
-              v-if="form.url"
-              type="button"
-              class="metadata-button"
-              :disabled="fetching || uploading || saving"
-              @click="metadata"
-            >
-              <LoaderCircle v-if="fetching" :size="15" class="spin" /><Sparkles
-                v-else
-                :size="15"
-              />{{
-                fetching
-                  ? 'Ищем подробности…'
-                  : form.item_type === 'certificate'
-                    ? 'Обновить иконку и название'
-                    : 'Подтянуть название, цену и фото'
-              }}
-            </button>
-          </section>
-        </div>
-        <div
-          v-if="form.item_type === 'certificate' && form.url"
-          class="flex items-center gap-3 rounded border border-line p-3"
-        >
-          <WishImage
-            v-if="form.image_id"
-            :src="imageUrl(form.image_id)"
-            :is-icon="true"
-            alt=""
-            class="size-10 object-contain"
-          />
-          <Gift v-else :size="24" aria-hidden="true" />
-          <span class="text-sm">{{ form.title || itemTitle({ title: null, url: form.url }) }}</span>
-        </div>
-        <section
-          v-else-if="form.item_type !== 'certificate'"
-          class="photo-section"
-          aria-label="Фотография"
-        >
-          <span class="editor-section-label">ОБЛОЖКА ЖЕЛАНИЯ</span>
-          <div class="upload-area" :class="{ 'has-photo': form.image_id }">
-            <WishImage
-              v-if="form.image_id"
-              :src="imageUrl(form.image_id)"
-              :is-icon="form.image_id === iconImageId"
-              alt="Фотография подарка"
-            /><button
-              type="button"
-              class="upload-button"
-              :disabled="uploading || fetching || saving"
-              @click="fileInput?.click()"
-            >
-              <LoaderCircle v-if="uploading" :size="22" class="spin" /><ImagePlus
-                v-else-if="!form.image_id"
-                :size="22"
-              /><span
-                >{{ uploading ? 'Загружаем…' : form.image_id ? 'Заменить фото' : 'Добавить фото'
-                }}<small
-                  ref="photoFeedback"
-                  :class="{ 'field-error': photoError }"
-                  :role="photoError ? 'alert' : undefined"
-                  >{{
-                    photoError ||
-                    (form.image_id ? 'Выбрать другой файл · до 5 МБ' : 'Необязательно · до 5 МБ')
-                  }}</small
-                ></span
-              ></button
-            ><button
-              v-if="form.image_id"
-              type="button"
-              class="icon-button remove-image"
-              :disabled="uploading || fetching || saving"
-              aria-label="Убрать фото"
-              @click="form.image_id = null"
-            >
-              <X :size="16" /></button
-            ><input
-              ref="fileInput"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              hidden
-              @change="upload"
-            />
-          </div>
-          <details class="photo-url-details">
-            <summary>Или загрузить фото по прямой ссылке</summary>
-            <div class="photo-url-area">
-              <label for="photo-url">Или загрузите фото по ссылке</label>
-              <div class="photo-url-row">
-                <input
-                  id="photo-url"
-                  v-model="photoUrl"
-                  type="text"
-                  inputmode="url"
-                  maxlength="2048"
-                  placeholder="https://сайт.ru/photo.jpg"
-                  aria-describedby="photo-url-hint"
-                  :aria-invalid="!!photoUrlError"
-                  :disabled="uploading || saving"
-                  @keydown.enter.prevent="uploadFromUrl"
-                /><button
-                  type="button"
-                  class="button secondary"
-                  :disabled="!photoUrl.trim() || uploading || fetching || saving"
-                  @click="uploadFromUrl"
-                >
-                  <LoaderCircle v-if="uploading" :size="16" class="spin" /><Link
-                    v-else
-                    :size="16"
-                  />Загрузить фото
-                </button>
-              </div>
-              <p
-                id="photo-url-hint"
-                ref="photoUrlFeedback"
-                class="description-hint"
-                :class="{ 'field-error': photoUrlError }"
-                :role="photoUrlError ? 'alert' : undefined"
-              >
-                {{ photoUrlError || 'JPEG, PNG или WebP · до 5 МБ' }}
-              </p>
-            </div>
-          </details>
-        </section>
-        <section class="form-section details-section" aria-label="Дополнительные сведения">
-          <div class="personal-description">
-            <label
-              >Заметка <span>необязательно</span
-              ><textarea
-                v-model="form.description"
-                rows="2"
-                :maxlength="form.item_type === 'certificate' ? 100 : 500"
-                aria-describedby="personal-description-hint"
+              <FormField
+                :model-value="form.title"
                 :placeholder="
-                  listType === 'surprise'
-                    ? 'Почему это точно в его или её вкусе?'
-                    : 'Цвет, размер или почему вам этого хочется…'
+                  form.item_type === 'gift'
+                    ? 'Например, керамическая чашка'
+                    : 'Например, что-нибудь для рисования'
                 "
-              />
-            </label>
-            <p id="personal-description-hint" class="description-hint">
-              {{
-                form.item_type === 'certificate'
-                  ? `${[...form.description].length} / 100`
-                  : `${[...form.description].length} / 500 · Только ваши слова`
-              }}
-            </p>
-          </div>
-          <div v-if="form.item_type !== 'certificate'" class="price-field">
-            <label for="item-price">Цена <span>необязательно</span></label>
-            <div class="price-input-row">
-              <button
-                type="button"
-                class="price-from"
-                :aria-pressed="form.price_mode === 'from'"
-                aria-label="Цена от указанной суммы"
-                @click="form.price_mode = form.price_mode === 'from' ? 'approximate' : 'from'"
+                @update:model-value="form.title = $event"
+                :required="form.item_type === 'idea'"
+                :maxlength="200"
+                clearable
+                clear-label="Очистить название"
+                :focused="focusedField === 'title'"
+                @focus="focusedField = 'title'"
+                @blur="focusedField = ''"
               >
-                {{ form.price_mode === 'from' ? '✓ Цена от' : 'Цена от' }}
-              </button>
-              <input
-                id="item-price"
-                :value="form.price"
-                @input="form.price = ($event.target as HTMLInputElement).value"
-                type="number"
-                min="0"
-                max="999999999999.99"
-                step="0.01"
-                placeholder="Сумма"
-              />
-            </div>
+                <template #label>Название <span v-if="form.item_type === 'idea'">*</span></template>
+                <template #clear-icon><X :size="15" /></template>
+              </FormField>
+            </section>
+            <section
+              v-if="section === 'source'"
+              class="form-section source-section"
+              :class="{ 'has-error': sourceError }"
+              aria-label="Ссылка и автозаполнение"
+            >
+              <FormField
+                :model-value="form.url"
+                type="url"
+                inputmode="url"
+                :control-attrs="{
+                  pattern: 'https?://[^\\s\\\\]+',
+                  autocapitalize: 'none',
+                  spellcheck: false,
+                }"
+                @update:model-value="updateSource"
+                :placeholder="sourcePlaceholder"
+                :required="form.item_type !== 'idea'"
+                :maxlength="2048"
+                :error="sourceError"
+                :hint="
+                  sourceHint ||
+                  (form.item_type === 'certificate'
+                    ? 'Ссылка на сайт магазина.'
+                    : 'Вставьте из «Поделиться», можно вместе с текстом.')
+                "
+                :message-role="sourceError ? 'alert' : sourceHint ? 'status' : 'none'"
+                hint-id="source-link-hint"
+                :hint-class="
+                  sourceError
+                    ? 'description-hint source-link-hint field-error'
+                    : 'description-hint source-link-hint'
+                "
+                :invalid="!!sourceError"
+                :disabled="uploading || saving"
+                :focused="focusedField === 'url'"
+                clearable
+                clear-label="Очистить ссылку"
+                @paste="pasteLink"
+                @focus="focusedField = 'url'"
+                @blur="onSourceBlur"
+              >
+                <template #label
+                  >{{ form.item_type === 'certificate' ? 'Ссылка на магазин' : 'Ссылка' }}
+                  <span v-if="form.item_type !== 'idea'">*</span></template
+                >
+                <template #clear-icon><X :size="15" /></template>
+              </FormField>
+              <AppButton
+                v-if="form.url && !(form.item_type === 'certificate' && certificateStore(form.url))"
+                variant="custom"
+                class="metadata-button"
+                :disabled="uploading || saving"
+                :loading="fetching"
+                :icon-size="15"
+                @click="metadata"
+              >
+                <Sparkles v-if="!fetching" :size="15" />{{
+                  fetching
+                    ? 'Ищем подробности…'
+                    : form.item_type === 'certificate'
+                      ? 'Обновить иконку и название'
+                      : 'Подтянуть название, цену и фото'
+                }}
+              </AppButton>
+            </section>
+          </template>
+        </div>
+        <section class="form-section details-section" aria-label="Дополнительные сведения">
+          <AppButton
+            v-if="listType === 'wishlist' && form.item_type !== 'certificate'"
+            variant="custom"
+            class="most-wanted-toggle"
+            :class="{ selected: mostWanted }"
+            :pressed="mostWanted"
+            :disabled="saving"
+            @click="mostWanted = !mostWanted"
+          >
+            <Heart :size="19" :fill="mostWanted ? 'currentColor' : 'none'" />
+            Очень хочу!
+          </AppButton>
+          <div class="personal-description">
+            <FormField
+              ref="noteInput"
+              :model-value="form.description"
+              as="textarea"
+              @update:model-value="form.description = $event"
+              label="Заметка"
+              :rows="2"
+              control-class="auto-grow"
+              :placeholder="
+                listType === 'surprise'
+                  ? 'Почему это точно в его или её вкусе?'
+                  : 'Цвет, размер или почему вам этого хочется…'
+              "
+              :hint="`Ваши слова · ${descriptionLength} / ${descriptionLimit}`"
+              :error="descriptionOverLimit ? `Не больше ${descriptionLimit} символов · ${descriptionLength} / ${descriptionLimit}` : ''"
+              :invalid="descriptionOverLimit"
+              hint-id="personal-description-hint"
+              :hint-class="['description-hint', { 'field-error': descriptionOverLimit }]"
+              :message-role="descriptionOverLimit ? 'alert' : 'none'"
+              :focused="focusedField === 'description'"
+              clearable
+              clear-label="Очистить заметку"
+              @input="resizeNote"
+              @focus="focusedField = 'description'"
+              @blur="focusedField = ''"
+            >
+              <template #clear-icon><X :size="15" /></template>
+            </FormField>
           </div>
+          <PriceField
+            v-if="form.item_type !== 'certificate'"
+            :model-value="form.price"
+            :mode="form.price_mode"
+            @update:model-value="form.price = $event"
+            @update:mode="form.price_mode = $event"
+          />
         </section>
       </div>
-      <div ref="saveFeedback" class="form-feedback">
-        <p v-if="saveError" class="inline-error" role="alert">{{ saveError }}</p>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="button secondary" :disabled="saving" @click="emit('close')">
-          Отмена</button
-        ><button class="button primary" :disabled="saving || uploading || fetching">
-          <LoaderCircle v-if="saving" :size="17" class="spin" />{{
+      <FieldMessage
+        v-if="saveError"
+        ref="saveFeedback"
+        class="inline-error"
+        kind="error"
+        role="alert"
+      >
+        {{ saveError }}
+      </FieldMessage>
+      <FormActions>
+        <AppButton variant="secondary" class="form-cancel" :disabled="saving" @click="emit('close')">
+          Отмена
+        </AppButton>
+        <AppButton
+          variant="primary"
+          class="flex-1"
+          type="submit"
+          :disabled="uploading || fetching"
+          :loading="saving"
+        >
+          {{
             saving
               ? 'Сохраняем…'
               : item
@@ -626,8 +883,8 @@ async function save() {
                   ? 'Добавить магазин'
                   : 'Добавить желание'
           }}
-        </button>
-      </div>
+        </AppButton>
+      </FormActions>
     </form>
   </Modal>
 </template>

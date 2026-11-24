@@ -1,6 +1,12 @@
-/* Transient notifications. */
+/* Transient notifications and shared field messages. */
 @layer components {
   .toast-message {
     @apply fixed bottom-28 left-1/2 z-50 flex w-max max-w-[calc(100%-32px)] -translate-x-1/2 items-center gap-2 rounded-lg bg-forest px-4 py-3 text-sm text-paper shadow-lg;
+  }
+  .field-message {
+    @apply mt-2 text-xs leading-relaxed text-muted;
+  }
+  .field-message--error {
+    @apply text-[#a04432];
   }
 }
