@@ -9,7 +9,7 @@ describe('PriceField', () => {
     const buttons = field.findAll('button')
     expect(buttons.map((button) => button.text())).toEqual(['Примерно', 'От'])
     expect(buttons.every((button) => button.attributes('aria-pressed') === 'false')).toBe(true)
-    expect(field.get('input').element.value).toBe('123456789')
+    expect(field.get('input').element.value).toBe('123 456 789')
 
     await buttons[0]!.trigger('click')
     expect(wrapper.emitted('update:mode')?.at(-1)).toEqual(['approximate'])

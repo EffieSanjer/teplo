@@ -3,11 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ItemForm from '../../../src/components/ItemForm.vue'
 import ItemCard from '../../../src/components/ItemCard.vue'
 import ItemDetail from '../../../src/components/ItemDetail.vue'
-import { send, type Item } from '../../../src/shared/api'
+import { api, send, type Item } from '../../../src/shared/api'
 
 vi.mock('../../../src/shared/api', async (original) => ({
   ...(await original<typeof import('../../../src/shared/api')>()),
   send: vi.fn(),
+  api: vi.fn(async () => []),
 }))
 
 const item: Item = {
@@ -40,6 +41,8 @@ const modal = { template: '<section><slot /></section>' }
 beforeEach(() => {
   vi.mocked(send).mockReset()
   vi.mocked(send).mockResolvedValue({})
+  vi.mocked(api).mockReset()
+  vi.mocked(api).mockResolvedValue([])
   vi.stubGlobal('matchMedia', () => ({ matches: false }))
   vi.stubGlobal(
     'ResizeObserver',
@@ -70,8 +73,8 @@ describe('gift privacy and compact certificates', () => {
     expect(wrapper.find('[data-sheet-handle]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Любимые книги')
     const button = (label: string) =>
-      wrapper.findAll('button').find((entry) => entry.text() === label)!
-    expect(button('Открыть ссылку').exists()).toBe(true)
+      wrapper.findAll('button').find((entry) => entry.text().includes(label))!
+    expect(button('Ссылка').exists()).toBe(true)
     await button('Редактировать').trigger('click')
     expect(wrapper.emitted('edit')).toHaveLength(1)
     await button('Удалить').trigger('click')
@@ -86,7 +89,8 @@ describe('gift privacy and compact certificates', () => {
       },
     })
     wrappers.push(wrapper)
-    expect(wrapper.text()).toContain('Забронировано: Анна')
+    expect(wrapper.text()).toContain('Уже забронировано')
+    expect(wrapper.text()).not.toContain('Анна')
     expect(wrapper.text()).not.toContain('????')
   })
 
@@ -98,7 +102,7 @@ describe('gift privacy and compact certificates', () => {
       },
     })
     wrappers.push(wrapper)
-    expect(wrapper.text()).toContain('Вы забронировали')
+    expect(wrapper.find('[aria-label="Вы забронировали"]').exists()).toBe(true)
   })
 
   it('selects a popular store and saves its identity while preserving the note', async () => {
@@ -108,18 +112,17 @@ describe('gift privacy and compact certificates', () => {
     })
     wrappers.push(wrapper)
     await wrapper.get('textarea').setValue('Любимые книги')
-    await wrapper.get('.store-select__trigger').trigger('click')
-    await wrapper.get('.store-select__option[data-value="chitai-gorod.ru"]').trigger('click')
-    expect((wrapper.get('input[type="url"]').element as HTMLInputElement).value).toBe(
-      'https://chitai-gorod.ru/',
+    await wrapper.get('.certificate-store-tile').trigger('click')
+    expect((wrapper.get('.source-section input[type="url"]').element as HTMLInputElement).value).toBe(
+      'https://ozon.ru/',
     )
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(send).toHaveBeenLastCalledWith(
       '/items',
       expect.objectContaining({
-        title: 'Читай-город',
-        url: 'https://chitai-gorod.ru/',
+        title: 'Ozon',
+        url: 'https://ozon.ru/',
         description: 'Любимые книги',
       }),
     )
@@ -131,9 +134,11 @@ describe('gift privacy and compact certificates', () => {
       global: { stubs: { Modal: modal } },
     })
     wrappers.push(wrapper)
-    expect(wrapper.get('select').element.value).toBe('friends')
-    await wrapper.get('select').setValue('private')
-    await wrapper.get('input[maxlength="200"]').setValue('Секрет')
+    expect(
+      wrapper.findAll('button').find((button) => button.text() === 'Всем друзьям')!.attributes('aria-pressed'),
+    ).toBe('true')
+    await wrapper.findAll('button').find((button) => button.text() === 'Только мне')!.trigger('click')
+    await wrapper.get('input[maxlength="100"]').setValue('Секрет')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(send).toHaveBeenCalledWith(
@@ -150,13 +155,13 @@ describe('gift privacy and compact certificates', () => {
     })
     wrappers.push(wrapper)
     expect(wrapper.find('input[type="file"]').exists()).toBe(false)
-    expect(wrapper.find('input[maxlength="200"]').exists()).toBe(false)
+    expect(wrapper.find('.identity-section').exists()).toBe(false)
     expect(wrapper.get('#personal-description-hint').text()).toContain('/ 100')
-    await wrapper.get('input[type="url"]').setValue('https://example.com')
-    await wrapper.get('input[type="url"]').trigger('blur')
+    await wrapper.get('.source-section input[type="url"]').setValue('https://example.com')
+    await wrapper.get('.source-section input[type="url"]').trigger('blur')
     await flushPromises()
     expect(wrapper.text()).toContain('Shop')
-    expect(wrapper.get('img').attributes('src')).toContain('logo')
+    expect(wrapper.get('img.site-icon').attributes('src')).toContain('logo')
     await wrapper.get('textarea').setValue('Любимые книги')
     await wrapper.get('form').trigger('submit')
     await flushPromises()

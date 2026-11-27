@@ -119,7 +119,7 @@ def test_social_links_can_be_saved_without_metadata(client, url):
     result = create(client, item_type="gift", url=url, title=None)
     assert result.status_code == 201
     assert result.json()["url"] == url
-    assert result.json()["price_mode"] == "approximate"
+    assert result.json()["price_mode"] == "exact"
 
 
 def test_own_surprises_are_inaccessible(client, db):

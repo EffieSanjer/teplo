@@ -66,7 +66,9 @@ const control = ref<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
 const nativeError = ref('');
 const fieldError = computed(() => props.error || nativeError.value);
 const message = ref<HTMLElement>();
-const showClear = computed(() => Boolean(props.modelValue) && props.clearable);
+const showClear = computed(
+  () => Boolean(props.modelValue) && props.clearable && !props.focused,
+);
 const describedBy = computed(
   () =>
     props.describedBy || (props.hintId && (props.hint || fieldError.value) ? props.hintId : undefined),

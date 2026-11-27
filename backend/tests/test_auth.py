@@ -36,17 +36,20 @@ def test_init_data():
     for invalid in [
         raw.replace("hash=", "hash=0"),
         raw + "&auth_date=1",
-        signed_data(settings, auth_date=str(int(time.time()) + 100)),
         signed_data(settings, user='{"id":"123"}'),
     ]:
         with pytest.raises(HTTPException) as exc:
             verify_init_data(invalid, settings)
         assert exc.value.status_code == 401
         assert exc.value.detail == "Недействительные данные входа"
-    with pytest.raises(HTTPException) as expired:
-        verify_init_data(signed_data(settings, auth_date="1"), settings)
-    assert expired.value.status_code == 401
-    assert "устарели" in expired.value.detail
+    for stale in [
+        signed_data(settings, auth_date="1"),
+        signed_data(settings, auth_date=str(int(time.time()) + 100)),
+    ]:
+        with pytest.raises(HTTPException) as expired:
+            verify_init_data(stale, settings)
+        assert expired.value.status_code == 401
+        assert "устарели" in expired.value.detail
 
 
 def test_production_dev_login_rejected():

@@ -161,6 +161,16 @@ watch(
   { flush: 'sync' },
 );
 
+watch(
+  () => [form.url, form.item_type],
+  (_, __, onCleanup) => {
+    if (form.item_type !== 'certificate' || !form.url.trim()) return;
+    const timer = setTimeout(() => autofillLink(), 700);
+    onCleanup(() => clearTimeout(timer));
+  },
+  { immediate: true },
+);
+
 
 type FeedbackRef = { value: unknown };
 

@@ -14,6 +14,7 @@ from src.config import get_settings
 from src.infrastructure.database import get_engine
 from src.integrations.product_metadata.routes import router as metadata_router
 from src.modules.auth.routes import router as auth_router
+from src.modules.feedback.routes import router as feedback_router
 from src.modules.gifts.routes import router as gifts_router
 from src.modules.media.routes import router as media_router
 from src.modules.users.routes import router as users_router
@@ -56,10 +57,12 @@ async def security(request: Request, call_next):
         response = JSONResponse({"detail": "Межсайтовый запрос запрещён"}, status_code=403)
     else:
         response = await call_next(request)
+    # Keep route-specific Cache-Control (e.g. media variants) instead of forcing no-store.
+    if "cache-control" not in response.headers:
+        response.headers["Cache-Control"] = "private, no-store"
     response.headers.update(
         {
             "X-Request-ID": request_id,
-            "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "no-referrer",
         }
@@ -97,5 +100,13 @@ def health() -> dict[str, str]:
         return JSONResponse({"status": "unavailable"}, status_code=503)
 
 
-for router in (auth_router, users_router, friends_router, gifts_router, media_router, metadata_router):
+for router in (
+    auth_router,
+    users_router,
+    friends_router,
+    gifts_router,
+    media_router,
+    metadata_router,
+    feedback_router,
+):
     app.include_router(router, prefix="/api/v1")

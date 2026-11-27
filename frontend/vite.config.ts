@@ -27,7 +27,15 @@ const dockerHmr = process.env.API_PROXY_TARGET
   : undefined
 
 export default defineConfig({
-  plugins: [vue(), tailwindcss()],
+  plugins: [
+    vue({
+      template: {
+        // Keep absolute public URLs as literals so Vitest does not try to import /…jpg.
+        transformAssetUrls: { includeAbsolute: false },
+      },
+    }),
+    tailwindcss(),
+  ],
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },

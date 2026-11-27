@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     telegram_mode: str = "disabled"
     telegram_bot_token: str = ""
     telegram_chat_id: int | None = None
+    telegram_admin_id: int | None = None
     telegram_bot_username: str = ""
     telegram_app_name: str = ""
     telegram_allow_private_login: bool = True

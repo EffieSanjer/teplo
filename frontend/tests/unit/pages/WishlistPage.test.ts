@@ -98,16 +98,15 @@ describe('friend surprise lists', () => {
       path === '/users/me' ? session.value!.user : [],
     )
     await open('/me')
-    expect(wrapper!.get('header.board-journal h1').text()).toContain('Моя доска')
-    expect(wrapper!.get('header.board-journal h1 em').text()).toBe('желаний.')
+    expect(wrapper!.get('.cover-capsule-title').text()).toBe('Я')
+    expect(wrapper!.get('.cover-capsule-lead').text()).toContain('Тихий уголок')
     expect(wrapper!.text()).not.toContain('Мой маленький мир')
-    expect(wrapper!.get('header.board-journal p.hidden').text()).toBe('Я')
-    expect(wrapper!.get('header.board-journal img').attributes('src')).toBe(
+    expect(wrapper!.get('.cover-capsule-avatar img').attributes('src')).toBe(
       '/api/v1/users/me/avatar',
     )
-    await wrapper!.get('header.board-journal img').trigger('error')
-    expect(wrapper!.find('header.board-journal img').exists()).toBe(false)
-    expect(wrapper!.get('header.board-journal .size-14 span').text()).toBe('Я')
+    await wrapper!.get('.cover-capsule-avatar img').trigger('error')
+    expect(wrapper!.find('.cover-capsule-avatar img').exists()).toBe(false)
+    expect(wrapper!.get('.cover-capsule-avatar').text()).toContain('Я')
     await wrapper!.get('[aria-label="Добавить желание"]').trigger('click')
     expect(wrapper!.get('.test-form').text()).toBe('me:wishlist')
   })
@@ -149,13 +148,13 @@ describe('friend surprise lists', () => {
     const wishCard = wrapper!.get('.collection-grid .test-item')
     expect(section.element.contains(wishCard.element)).toBe(false)
     expect(
-      wishCard.element.compareDocumentPosition(section.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+      wishCard.element.compareDocumentPosition(section.element) & Node.DOCUMENT_POSITION_PRECEDING,
     ).toBeTruthy()
   })
   it('shows the surprise tab and opens the form without group membership', async () => {
     await open('/users/friend/surprises')
     expect(wrapper!.find('a[href="/users/friend/surprises"]').exists()).toBe(true)
-    expect(wrapper!.text()).toContain('Получатель не видит этот список.')
+    expect(wrapper!.text()).toContain('Получатель её не увидит.')
     await wrapper!.get('[aria-label="Добавить сюрприз"]').trigger('click')
     expect(wrapper!.get('.test-form').text()).toBe('friend:surprise')
   })
@@ -208,7 +207,7 @@ describe('friend surprise lists', () => {
     vi.mocked(api).mockRejectedValue(new Error('Нет доступа'))
     await router.push('/users/friend/surprises')
     await flushPromises()
-    expect(wrapper!.get('h1').text()).not.toBe('Аня')
+    expect(wrapper!.find('.friend-cover-title').exists()).toBe(false)
     expect(wrapper!.get('[role="alert"]').text()).toBe('Нет доступа')
     expect(wrapper!.find('a[href="/users/friend/surprises"]').exists()).toBe(false)
   })

@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { AlertTriangle, Moon, Send, Settings, Sun } from 'lucide-vue-next';
 import Modal from './Modal.vue';
+import { ApiError, send } from '../shared/api';
 import { theme, themePreference, setTheme, type ThemePreference } from '../shared/theme';
 import { notify } from '../shared/notifications';
 import { AppButton, FieldMessage } from './ui';
@@ -29,17 +30,12 @@ async function sendFeedback() {
   const text = feedback.value.trim();
   if (!text || sending.value) return;
   sending.value = true;
-  const message = `Предложение для «Кстати»:\n\n${text}`;
   try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(message);
-      notify('Скопировано — пришлите в чат с ботом');
-    } else {
-      notify('Скопируйте текст вручную и пришлите в чат с ботом');
-    }
+    await send('/feedback', { message: text });
     feedback.value = '';
-  } catch {
-    notify('Не удалось скопировать. Попробуйте ещё раз');
+    notify('Отправлено разработчикам');
+  } catch (error) {
+    notify(error instanceof ApiError ? error.message : 'Не удалось отправить. Попробуйте ещё раз');
   } finally {
     sending.value = false;
   }
@@ -94,8 +90,7 @@ async function sendFeedback() {
       <section class="settings-section" aria-label="Предложения разработчикам">
         <h3 class="settings-label">Предложения разработчикам</h3>
         <p class="settings-hint">
-          Напишите, что улучшить или что мешает — текст скопируется, и его можно
-          прислать в чат с ботом.
+          Напишите, что улучшить или что мешает — сообщение уйдёт разработчикам через бота.
         </p>
         <label class="settings-feedback">
           <span class="visually-hidden">Ваше предложение</span>
@@ -111,10 +106,10 @@ async function sendFeedback() {
           class="settings-send"
           :disabled="!feedback.trim()"
           :loading="sending"
-          loading-text="Копируем…"
+          loading-text="Отправляем…"
           @click="sendFeedback"
         >
-          <Send :size="16" />Скопировать предложение
+          <Send :size="16" />Отправить предложение
         </AppButton>
       </section>
 

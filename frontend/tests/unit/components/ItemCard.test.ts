@@ -134,7 +134,7 @@ describe('ItemCard', () => {
     expect(wrapper.get('.link-bookmark-spine img').attributes('src')).toContain('wildberries')
     expect(wrapper.get('.card-open').attributes('aria-label')).toBe('Открыть: Wildberries')
   })
-  it('renders afisha gifts as vertical tickets with the title on the stub', () => {
+  it('renders afisha gifts as vertical tickets with the title on the face', () => {
     const wrapper = mount(ItemCard, {
       props: {
         item: {
@@ -151,10 +151,8 @@ describe('ItemCard', () => {
     expect(wrapper.find('.link-bookmark').exists()).toBe(false)
     expect(wrapper.find('.ticket-service').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Яндекс Афиша')
-    expect(wrapper.find('.ticket-face-title').exists()).toBe(false)
     expect(wrapper.get('.wish-type-icon').attributes('aria-label')).toBe('Билет')
-    expect(wrapper.find('.ticket-stub-icon').exists()).toBe(false)
-    expect(wrapper.get('.ticket-stub h3').text()).toBe('Концерт')
+    expect(wrapper.get('.ticket-face-title').text()).toBe('Концерт')
     expect(wrapper.get('.ticket-art img').attributes('src')).toContain('poster')
     expect(wrapper.get('.card-open').attributes('aria-label')).toBe('Открыть: Концерт')
   })
@@ -174,7 +172,6 @@ describe('ItemCard', () => {
     expect(wrapper.classes()).not.toContain('link-bookmark-card')
     expect(wrapper.get('.wish-type-icon').attributes('aria-label')).toBe('Билет')
     expect(wrapper.get('.ticket-face-title').text()).toBe('Kassir')
-    expect(wrapper.get('.ticket-stub h3').text()).toBe('Kassir')
     expect(wrapper.get('.card-open').attributes('aria-label')).toBe('Открыть: Kassir')
   })
   it('renders explicit ticket gifts from unknown desks', () => {
@@ -193,7 +190,6 @@ describe('ItemCard', () => {
     expect(wrapper.classes()).toContain('ticket-card')
     expect(wrapper.get('.wish-type-icon').attributes('aria-label')).toBe('Билет')
     expect(wrapper.get('.ticket-face-title').text()).toBe('Спектакль')
-    expect(wrapper.get('.ticket-stub h3').text()).toBe('Спектакль')
   })
   it('keeps a titled gift without a photo as a note card', () => {
     const wrapper = mount(ItemCard, {
