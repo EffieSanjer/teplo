@@ -4,11 +4,21 @@ import { Search, Users, UserPlus, UserMinus, X } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api, send, session, type User } from '../shared/api';
-import { launchDiagnostics, shareInvitation } from '../integrations/telegram';
+import { shareInvitation } from '../integrations/telegram';
 import { notify } from '../shared/notifications';
 import Modal from '../components/Modal.vue';
 import FriendProfile from '../components/FriendProfile.vue';
 import { invitationToken } from '../shared/invitation';
+import {
+  AppButton,
+  ConfirmDialog,
+  EmptyState,
+  FieldMessage,
+  FormActions,
+  FormField,
+  LoadingLabel,
+  SkeletonGrid,
+} from '../components/ui';
 
 const route = useRoute(),
   router = useRouter();
@@ -24,21 +34,6 @@ const preview = ref<{ inviter: User; own: boolean }>(),
   previewError = ref(''),
   previewLoading = ref(false);
 const removing = ref<User>();
-const enteringInvite = ref(false),
-  inviteInput = ref(''),
-  inviteInputError = ref('');
-
-async function openPastedInvite() {
-  const parsed = invitationToken(inviteInput.value);
-  if (!parsed) {
-    inviteInputError.value = 'Вставьте полную ссылку приглашения из Telegram.';
-    return;
-  }
-  enteringInvite.value = false;
-  inviteInput.value = '';
-  inviteInputError.value = '';
-  await router.replace({ path: '/friends', query: { invite: parsed } });
-}
 
 const token = computed(() => (typeof route.query.invite === 'string' ? route.query.invite : ''));
 const filtered = computed(() =>
@@ -92,11 +87,16 @@ async function createInvite() {
 }
 
 async function revoke() {
-  if (busy.value) return;
+  if (busy.value || !invitation.value) return;
+  const token = invitationToken(invitation.value.url);
+  if (!token) {
+    actionError.value = 'Не удалось отозвать эту ссылку. Создайте новую.';
+    return;
+  }
   busy.value = true;
   actionError.value = '';
   try {
-    await send('/friends/invitations', undefined, 'DELETE');
+    await send(`/friends/invitations/${encodeURIComponent(token)}`, undefined, 'DELETE');
     invitation.value = undefined;
     inviting.value = false;
     notify('Приглашение отозвано');
@@ -165,12 +165,6 @@ async function closePreview() {
   });
 }
 
-async function replaceInvite() {
-  await closePreview();
-  enteringInvite.value = true;
-  inviteInputError.value = '';
-}
-
 async function acceptInvite() {
   if (busy.value || previewLoading.value || !preview.value || preview.value.own) return;
   const acceptedToken = token.value;
@@ -219,91 +213,82 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page friends-page pb-28">
-    <div class="friends-layout">
-      <aside class="friends-intro">
-        <span class="circle-eyebrow">ЛИЧНОЕ ПРОСТРАНСТВО / ЛЮДИ</span>
-        <header class="page-heading">
-          <div class="heading-context">
-            <div class="heading-title">
-              <h1>Друзья</h1>
-              <span v-if="!loading && !error" class="count">
-                {{ users.length }}
-              </span>
-            </div>
-          </div>
-        </header>
-        <p class="friends-intro-copy">
-          Близкие люди.<br />Маленькие подсказки.<br />Подарки со смыслом.
-        </p>
-
-        <div class="friend-actions">
-          <button
-            class="button primary friend-invite-action"
+    <section class="friends-hero" aria-label="Друзья">
+      <div class="friends-hero-image" aria-hidden="true" />
+      <div class="friends-hero-shade" aria-hidden="true" />
+      <div class="friends-hero-content">
+        <div class="friends-hero-copy">
+          <h1 class="friends-hero-title">Друзья</h1>
+          <p class="friends-hero-lead">
+            Люди, с которыми хочется делиться желаниями — без общей группы, просто по дружбе.
+          </p>
+        </div>
+        <div class="friends-hero-actions">
+          <AppButton
+            variant="custom"
+            class="friend-invite-action"
             :disabled="busy"
             @click="createInvite"
           >
             <UserPlus :size="17" />
             Пригласить друга
-          </button>
-          <button
-            class="text-button received-invite"
-            @click="
-              enteringInvite = true;
-              inviteInputError = '';
-            "
-          >
-            У меня есть приглашение
-          </button>
+          </AppButton>
         </div>
-      </aside>
+      </div>
+    </section>
+    <div class="friends-layout">
       <section class="friends-directory" aria-label="Список друзей" :aria-busy="loading">
         <header class="circle-directory-heading">
-          <span class="circle-eyebrow">МОЙ КРУГ</span>
-          <h2>Те, кого хочется радовать</h2>
+          <div class="circle-directory-title">
+            <h2>Ваш круг</h2>
+            <span v-if="!loading && !error" class="directory-count" role="status">
+              {{ users.length }}
+            </span>
+          </div>
         </header>
         <div v-if="users.length || query" class="friends-toolbar">
-          <label class="search-input">
-            <Search :size="17" aria-hidden="true" />
-            <input
-              v-model="query"
-              type="search"
-              aria-label="Найти друга"
-              placeholder="Найти друга"
-              maxlength="120"
-            />
-            <button
-              v-if="query"
-              class="search-clear"
-              aria-label="Очистить поиск"
-              @click="query = ''"
-            >
-              <X :size="16" />
-            </button> </label
-          ><span class="directory-count" role="status">{{ filtered.length }} в круге</span>
+          <FormField
+            v-model="query"
+            class="search-input"
+            type="search"
+            :icon="Search"
+            aria-label="Найти друга"
+            placeholder="Найти друга"
+            :maxlength="120"
+            clearable
+            clear-label="Очистить поиск"
+            clear-variant="custom"
+            clear-class="search-clear"
+          >
+            <template #clear-icon><X :size="16" /></template>
+          </FormField>
+          <span v-if="query" class="directory-count" role="status">{{ filtered.length }} найдено</span>
         </div>
         <div v-if="refreshError" class="friends-refresh-error" role="alert">
-          <p>Не удалось обновить список. {{ refreshError }}</p>
-          <button class="text-button" @click="load(true)">Повторить</button>
+          <FieldMessage kind="error">Не удалось обновить список. {{ refreshError }}</FieldMessage>
+          <AppButton variant="text" @click="load(true)">Повторить</AppButton>
         </div>
-        <div v-if="loading" class="loading-grid" role="status" aria-label="Загрузка друзей">
-          <div v-for="n in 3" :key="n" class="skeleton friend-skeleton" aria-hidden="true" />
-        </div>
-        <div v-else-if="error" class="empty-state">
-          <h2>Не удалось загрузить друзей</h2>
-          <p role="alert">{{ error }}</p>
-          <button class="button secondary" @click="load()">Повторить</button>
-        </div>
-        <div v-else-if="!filtered.length" class="empty-state">
-          <Users :size="36" :stroke-width="1.3" />
-          <h2>{{ query ? 'Никого не нашли' : 'Пока только вы' }}</h2>
-          <p>
-            {{
-              query
-                ? 'Попробуйте другое имя.'
-                : 'Пригласите друга по ссылке. После подтверждения вы сможете видеть вишлисты друг друга — общая группа не нужна.'
-            }}
-          </p>
-        </div>
+        <SkeletonGrid v-if="loading" :count="3" variant="friends" label="Загрузка друзей" />
+        <EmptyState
+          v-else-if="error"
+          title="Не удалось загрузить друзей"
+          :description="error"
+          alert
+        >
+          <AppButton variant="secondary" @click="load()">Повторить</AppButton>
+        </EmptyState>
+        <EmptyState
+          v-else-if="!filtered.length"
+          :title="query ? 'Никого не нашли' : 'Пока только вы'"
+          :description="
+            query
+              ? 'Попробуйте другое имя.'
+              : 'Пригласите друга по ссылке. После подтверждения вы сможете видеть вишлисты друг друга — общая группа не нужна.'
+          "
+          :icon="Users"
+          :icon-size="36"
+          :icon-width="1.3"
+        />
         <div v-else class="friends-grid">
           <FriendProfile
             v-for="user in filtered"
@@ -311,18 +296,19 @@ onBeforeUnmount(() => {
             :user="user"
             :to="`/users/${encodeURIComponent(user.id)}/wishlist`"
           >
-            <button
+            <AppButton
               v-if="user.is_friend"
+              variant="custom"
               class="friend-remove"
               :disabled="busy"
-              :aria-label="`Удалить из друзей: ${user.display_name}`"
+              :label="`Удалить из друзей: ${user.display_name}`"
               @click="
                 removing = user;
                 actionError = '';
               "
             >
               <UserMinus :size="16" />
-            </button>
+            </AppButton>
           </FriendProfile>
         </div>
       </section>
@@ -333,43 +319,50 @@ onBeforeUnmount(() => {
           Отправьте ссылку тому, с кем хотите делиться желаниями. После подтверждения вы оба
           получите доступ к вишлистам и фотографиям друг друга.
         </p>
-        <p class="inline-hint">
-          Ссылка для одного друга, действует 7 дней. Новое приглашение отменяет предыдущее.
-          Отправляйте её только лично.
-        </p>
-        <p v-if="busy" role="status">
-          {{ invitation ? 'Отзываем приглашение…' : 'Готовим приглашение…' }}
-        </p>
+        <FieldMessage class="inline-hint">
+          Ссылка для одного друга, действует 7 дней и перестаёт работать после добавления в друзья.
+          Ранее отправленные ссылки остаются действительными. Отправляйте их только лично.
+        </FieldMessage>
+        <LoadingLabel
+          v-if="busy"
+          :label="invitation ? 'Отзываем приглашение…' : 'Готовим приглашение…'"
+          role="status"
+        />
         <template v-if="invitation">
-          <label class="invite-link-label"
-            >Ссылка-приглашение<input
-              class="invite-link"
-              :value="invitation.url"
-              readonly
-              @focus="($event.target as HTMLInputElement).select()"
-          /></label>
-          <div class="form-actions">
-            <button class="button secondary" :disabled="busy" @click="copyLink">Скопировать</button>
-            <button class="button primary" :disabled="busy" @click="shareLink">
+          <FormField
+            class="invite-link-label"
+            label="Ссылка-приглашение"
+            :model-value="invitation.url"
+            control-class="invite-link"
+            readonly
+            @focus="($event.target as HTMLInputElement).select()"
+          />
+          <FormActions>
+            <AppButton variant="secondary" :disabled="busy" @click="copyLink">
+              Скопировать
+            </AppButton>
+            <AppButton variant="primary" :disabled="busy" @click="shareLink">
               Отправить другу
-            </button>
-          </div>
-          <button class="text-button" :disabled="busy" @click="revoke">Отозвать ссылку</button>
+            </AppButton>
+          </FormActions>
+          <AppButton variant="text" :disabled="busy" @click="revoke"> Отозвать ссылку </AppButton>
         </template>
-        <p v-if="actionError" class="inline-error" role="alert">{{ actionError }}</p>
-        <button
+        <FieldMessage v-if="actionError" class="inline-error" kind="error" role="alert">
+          {{ actionError }}
+        </FieldMessage>
+        <AppButton
           v-if="actionError && !invitation"
-          class="button secondary"
+          variant="secondary"
           :disabled="busy"
           @click="createInvite"
         >
           Попробовать ещё раз
-        </button>
+        </AppButton>
       </div>
     </Modal>
     <Modal v-if="token" title="Приглашение в друзья" @close="!busy && closePreview()">
       <div class="confirm-body">
-        <p v-if="previewLoading" role="status">Проверяем приглашение…</p>
+        <LoadingLabel v-if="previewLoading" label="Проверяем приглашение…" role="status" />
         <template v-if="preview"
           ><h3>{{ preview.inviter.display_name }}</h3>
           <p>
@@ -379,75 +372,40 @@ onBeforeUnmount(() => {
                 : 'Предлагает делиться желаниями. После подтверждения вы сможете смотреть вишлисты и фотографии друг друга.'
             }}
           </p>
-          <p class="inline-hint">
+          <FieldMessage class="inline-hint">
             Вы также сможете добавлять сюрпризы для друга. Этот список видят его подтверждённые
             друзья, но не он сам. Сюрпризы для вас останутся скрыты, групповые списки не
             открываются. Дружбу можно прекратить в любой момент.
-          </p>
-          <button v-if="!preview.own" class="button primary" :disabled="busy" @click="acceptInvite">
+          </FieldMessage>
+          <AppButton
+            v-if="!preview.own"
+            variant="primary"
+            :disabled="busy"
+            :loading="busy"
+            loading-text="Добавляем…"
+            @click="acceptInvite"
+          >
             {{ busy ? 'Добавляем…' : 'Добавить в друзья' }}
-          </button>
+          </AppButton>
         </template>
-        <template v-if="previewError"
-          ><p class="inline-error" role="alert">
+        <template v-if="previewError">
+          <FieldMessage class="inline-error" kind="error" role="alert">
             {{ previewError }}
-          </p>
-          <button class="button secondary" :disabled="busy" @click="replaceInvite">
-            Вставить актуальную ссылку
-          </button>
+          </FieldMessage>
         </template>
-        <button class="text-button" :disabled="busy" @click="closePreview">Не сейчас</button>
+        <AppButton variant="text" :disabled="busy" @click="closePreview">Не сейчас</AppButton>
       </div>
     </Modal>
-    <Modal v-if="enteringInvite" title="Открыть приглашение" @close="enteringInvite = false">
-      <form class="confirm-body" @submit.prevent="openPastedInvite">
-        <p>
-          Вставьте ссылку, которую прислал друг. Сначала покажем, от кого приглашение, — добавление
-          только после вашего подтверждения.
-        </p>
-        <label class="invite-link-label"
-          >Ссылка приглашения<input
-            v-model="inviteInput"
-            class="invite-link"
-            aria-label="Полученная ссылка приглашения"
-            placeholder="https://t.me/…"
-            maxlength="2048"
-            autocomplete="off"
-            autocapitalize="off"
-            :spellcheck="false"
-        /></label>
-        <p v-if="inviteInputError" class="inline-error" role="alert">
-          {{ inviteInputError }}
-        </p>
-        <div class="form-actions">
-          <button class="button primary" type="submit">Проверить приглашение</button>
-        </div>
-        <details class="inline-hint">
-          <summary>Диагностика открытия по ссылке</summary>
-          <p>{{ launchDiagnostics() }}</p>
-        </details>
-      </form>
-    </Modal>
-    <Modal v-if="removing" title="Удалить из друзей?" @close="!busy && (removing = undefined)">
-      <div class="confirm-body">
-        <p>
-          Вы и {{ removing.display_name }} больше не сможете смотреть вишлисты друг друга по дружбе
-          или списки сюрпризов друг для друга. Уже просмотренные данные отозвать нельзя.
-        </p>
-        <p class="inline-hint">
-          Созданные сюрпризы сохранятся для остальных друзей получателя. Если вы состоите в общей
-          группе, доступ к её спискам сохранится.
-        </p>
-        <p v-if="actionError" class="inline-error" role="alert">{{ actionError }}</p>
-        <div class="form-actions">
-          <button class="button secondary" :disabled="busy" @click="removing = undefined">
-            Оставить
-          </button>
-          <button class="button danger" :disabled="busy" @click="removeFriend">
-            Удалить из друзей
-          </button>
-        </div>
-      </div>
-    </Modal>
+    <ConfirmDialog
+      v-if="removing"
+      title="Удалить из друзей?"
+      :description="`Вы и ${removing.display_name} больше не сможете смотреть вишлисты друг друга по дружбе или списки сюрпризов друг для друга. Уже просмотренные данные отозвать нельзя.`"
+      hint="Созданные сюрпризы сохранятся для остальных друзей получателя. Если вы состоите в общей группе, доступ к её спискам сохранится."
+      :error="actionError"
+      :busy="busy"
+      confirm-text="Удалить из друзей"
+      @close="removing = undefined"
+      @confirm="removeFriend"
+    />
   </div>
 </template>

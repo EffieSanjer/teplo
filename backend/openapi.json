@@ -273,18 +273,6 @@
             }
           }
         }
-      },
-      "delete": {
-        "tags": [
-          "friends"
-        ],
-        "summary": "Revoke Invitation",
-        "operationId": "revoke_invitation_api_v1_friends_invitations_delete",
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          }
-        }
       }
     },
     "/api/v1/friends/invitations/{token}": {
@@ -315,6 +303,39 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "friends"
+        ],
+        "summary": "Revoke Invitation",
+        "operationId": "revoke_invitation_api_v1_friends_invitations__token__delete",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",

@@ -83,20 +83,27 @@ def test_invitation_explicit_mutual_access_and_immediate_revocation(db, people):
     assert a.get(f"/api/v1/items/{wish['id']}").status_code == 200
 
 
-def test_revoked_replaced_expired_and_invalid_links(db, people):
-    a, b, _, _, _, _ = people
-    old = invite(a)
-    new = invite(a)
-    assert b.get(f"/api/v1/friends/invitations/{old}").status_code == 404
-    assert b.post("/api/v1/friends/accept", json={"token": old}).status_code == 404
-    db.scalar(select(FriendInvitation)).expires_at = utcnow() - timedelta(seconds=1)
+def test_revoked_expired_and_invalid_links(db, people):
+    a, b, c, _, _, _ = people
+    first = invite(a)
+    second = invite(a)
+    # Creating another invite must not invalidate a still-pending link.
+    assert b.get(f"/api/v1/friends/invitations/{first}").status_code == 200
+    assert b.post("/api/v1/friends/accept", json={"token": first}).status_code == 200
+    assert c.get(f"/api/v1/friends/invitations/{second}").status_code == 200
+    invite_row = db.scalar(
+        select(FriendInvitation).where(FriendInvitation.accepted_by.is_(None))
+    )
+    invite_row.expires_at = utcnow() - timedelta(seconds=1)
     db.commit()
-    assert b.post("/api/v1/friends/accept", json={"token": new}).status_code == 404
-    new = invite(a)
-    assert a.delete("/api/v1/friends/invitations").status_code == 204
-    assert b.get(f"/api/v1/friends/invitations/{new}").status_code == 404
-    assert b.post("/api/v1/friends/accept", json={"token": "forged"}).status_code == 422
-    assert b.get("/api/v1/friends/invitations/forged").status_code == 404
+    assert c.post("/api/v1/friends/accept", json={"token": second}).status_code == 404
+    fresh = invite(a)
+    other = invite(a)
+    assert a.delete(f"/api/v1/friends/invitations/{fresh}").status_code == 204
+    assert c.get(f"/api/v1/friends/invitations/{fresh}").status_code == 404
+    assert c.get(f"/api/v1/friends/invitations/{other}").status_code == 200
+    assert c.post("/api/v1/friends/accept", json={"token": "forged"}).status_code == 422
+    assert c.get("/api/v1/friends/invitations/forged").status_code == 404
 
 
 def test_friendship_not_transitive_and_duplicate_pair_is_safe(db, people):

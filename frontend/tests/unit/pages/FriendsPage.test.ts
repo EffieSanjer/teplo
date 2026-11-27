@@ -12,7 +12,6 @@ vi.mock('../../../src/shared/api', async (importOriginal) => ({
 }))
 vi.mock('../../../src/integrations/telegram', () => ({
   shareInvitation: vi.fn(),
-  launchDiagnostics: () => 'Запуск v2',
 }))
 
 const token = 'a'.repeat(43)
@@ -63,22 +62,6 @@ async function click(text: string) {
 }
 
 describe('friend invitations', () => {
-  it('previews a pasted direct link without automatically accepting it', async () => {
-    vi.mocked(api).mockImplementation(async (path) =>
-      path === '/users' ? [] : { inviter: friend, own: false },
-    )
-    const router = await open()
-    await click('У меня есть приглашение')
-    await wrapper!
-      .get('input[aria-label="Полученная ссылка приглашения"]')
-      .setValue(`https://t.me/test_bot?startapp=friend_${token}`)
-    await wrapper!.get('form').trigger('submit')
-    await flushPromises()
-    expect(router.currentRoute.value.query.invite).toBe(token)
-    expect(api).toHaveBeenCalledWith(`/friends/invitations/${token}`)
-    expect(wrapper!.text()).toContain('Аня')
-    expect(send).not.toHaveBeenCalled()
-  })
   it('creates a private link, shares it explicitly, and can revoke it', async () => {
     const url = `https://t.me/test_bot?start=friend_${token}`
     vi.mocked(send).mockResolvedValue({ url, expires_at: '2026-11-20T12:00:00' })
@@ -90,7 +73,11 @@ describe('friend invitations', () => {
     await click('Отправить другу')
     expect(shareInvitation).toHaveBeenCalledWith(url)
     await click('Отозвать ссылку')
-    expect(send).toHaveBeenLastCalledWith('/friends/invitations', undefined, 'DELETE')
+    expect(send).toHaveBeenLastCalledWith(
+      `/friends/invitations/${token}`,
+      undefined,
+      'DELETE',
+    )
     expect(wrapper!.find('[role="dialog"]').exists()).toBe(false)
   })
 

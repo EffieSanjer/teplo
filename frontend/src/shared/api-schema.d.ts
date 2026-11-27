@@ -168,8 +168,7 @@ export interface paths {
         put?: never;
         /** Create Invitation */
         post: operations["create_invitation_api_v1_friends_invitations_post"];
-        /** Revoke Invitation */
-        delete: operations["revoke_invitation_api_v1_friends_invitations_delete"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -186,7 +185,8 @@ export interface paths {
         get: operations["preview_api_v1_friends_invitations__token__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Revoke Invitation */
+        delete: operations["revoke_invitation_api_v1_friends_invitations__token__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -929,24 +929,6 @@ export interface operations {
             };
         };
     };
-    revoke_invitation_api_v1_friends_invitations_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     preview_api_v1_friends_invitations__token__get: {
         parameters: {
             query?: never;
@@ -966,6 +948,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvitationPreview"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_invitation_api_v1_friends_invitations__token__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

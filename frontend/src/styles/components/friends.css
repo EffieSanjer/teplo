@@ -1,49 +1,78 @@
 /* Friends directory, invitations and circle layout. */
 @layer components {
+  .friends-shell {
+    @apply relative;
+  }
+  .friends-shell .topbar-over-hero {
+    @apply absolute inset-x-0 top-0 z-20 text-white;
+  }
+  .friends-shell .topbar-over-hero .brand {
+    @apply text-white;
+  }
+  .friends-shell .topbar-over-hero .brand-comma {
+    @apply text-white/70;
+  }
+  .friends-shell .topbar-over-hero .main-nav a {
+    @apply text-white/90 hover:bg-white/10;
+  }
+  .friends-shell .topbar-over-hero .main-nav a.current {
+    @apply bg-white/18 text-white;
+  }
+  .friends-shell .topbar-over-hero .logout-button {
+    @apply border-white/25 bg-white/12 text-white hover:bg-white/20;
+  }
+  .friends-page {
+    @apply px-0;
+  }
+  .friends-hero {
+    @apply relative isolate flex w-full flex-col overflow-hidden text-white min-[761px]:rounded-b-[28px];
+    min-height: max(280px, 40svh);
+  }
+  .friends-hero-image {
+    @apply absolute inset-0 size-full bg-cover bg-[center_top];
+    background-image: url('/friends-hero.jpg');
+  }
+  .friends-hero-shade {
+    @apply absolute inset-0 bg-[linear-gradient(180deg,rgb(18_40_58_/_42%)_0%,rgb(18_40_58_/_12%)_38%,rgb(18_40_58_/_78%)_100%)];
+  }
+  .friends-hero-content {
+    @apply relative z-10 flex min-h-[inherit] flex-1 flex-col justify-end gap-4 px-5 pb-6 pt-[88px] min-[761px]:gap-5 min-[761px]:px-10 min-[761px]:pb-8;
+  }
+  .friends-hero-copy {
+    @apply max-w-xl;
+  }
+  .friends-hero-title {
+    @apply font-editorial text-[clamp(36px,7vw,56px)] font-normal leading-[1.05] tracking-[-0.03em];
+  }
+  .friends-hero-lead {
+    @apply mt-3 max-w-[36ch] text-sm leading-relaxed text-white/85;
+  }
+  .friends-hero-actions {
+    @apply flex flex-nowrap items-center gap-2 overflow-x-auto;
+  }
+  .friends-hero-actions .friend-invite-action {
+    @apply inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-transparent bg-white px-4 py-2.5 text-sm font-medium text-forest shadow-[0_8px_28px_rgb(12_30_48_/_18%)] transition-colors hover:bg-[#eef4f9];
+  }
   .friends-layout {
-    @apply mx-auto grid w-full max-w-[1440px] gap-7 px-4 pt-2 min-[761px]:grid-cols-[278px_minmax(0,1fr)] min-[761px]:gap-10 min-[761px]:px-10 min-[761px]:pt-6;
-  }
-  .friends-intro {
-    @apply flex flex-col rounded-md bg-[#304b40] p-6 text-paper min-[761px]:sticky min-[761px]:top-7;
-  }
-  .friends-intro > .circle-eyebrow {
-    @apply text-[#c7d0c1];
-  }
-  .friends-intro .page-heading {
-    @apply my-6;
-  }
-  .friends-intro .heading-title {
-    @apply flex items-center gap-4;
-  }
-  .friends-intro h1 {
-    @apply font-editorial text-[40px] tracking-tight;
-  }
-  .friends-intro-copy {
-    @apply mb-6 font-editorial text-lg leading-relaxed text-[#cbd4c6];
-  }
-  .friend-actions {
-    @apply flex flex-col gap-3;
-  }
-  .friend-invite-action {
-    @apply bg-sand text-forest hover:bg-[#e9ddc6];
-  }
-  .received-invite {
-    @apply text-xs text-[#d6dccf];
+    @apply mx-auto grid w-full max-w-[1440px] gap-6 px-4 pt-6 min-[761px]:px-10 min-[761px]:pt-8;
   }
   .friends-directory {
     @apply min-w-0;
   }
   .circle-directory-heading {
-    @apply mb-6 border-b border-line pb-5;
+    @apply mb-5 border-b border-line pb-4;
+  }
+  .circle-directory-title {
+    @apply flex items-center gap-3;
   }
   .circle-directory-heading h2 {
-    @apply mt-2 font-editorial text-[28px] tracking-tight;
+    @apply font-editorial text-[28px] tracking-tight;
   }
   .friends-toolbar {
     @apply mb-5 flex flex-wrap items-center gap-3;
   }
   .search-input {
-    @apply flex min-w-0 flex-1 items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-[#2b362e];
+    @apply flex min-w-0 flex-1 items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-[#1e2c3a];
   }
   .search-input input {
     @apply border-0 bg-transparent px-0 text-sm shadow-none focus:ring-0;
@@ -54,6 +83,9 @@
   .directory-count {
     @apply text-xs text-muted;
   }
+  .circle-directory-title .directory-count {
+    @apply inline-flex min-w-6 items-center justify-center rounded-full border border-line px-2 py-1;
+  }
   .friends-grid {
     @apply grid gap-3 min-[1000px]:grid-cols-2;
   }
@@ -61,7 +93,7 @@
     @apply mb-4 grid gap-2 text-sm text-[#a04432];
   }
   .type-switch {
-    @apply mb-4 grid grid-cols-2 gap-1 rounded bg-[#e6e8dd] p-1 dark:bg-[#202823];
+    @apply mb-4 grid grid-cols-2 gap-1 rounded bg-[#dce6ef] p-1 dark:bg-[#15202b];
   }
   .type-switch button {
     @apply flex min-h-12 items-center justify-center gap-2 rounded p-2 text-sm text-muted;
