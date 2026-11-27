@@ -449,7 +449,7 @@ export interface components {
              * Item Type
              * @enum {string}
              */
-            item_type: "idea" | "gift" | "certificate";
+            item_type: "idea" | "gift" | "certificate" | "ticket";
             /** Title */
             title?: string | null;
             /** Description */
@@ -464,10 +464,10 @@ export interface components {
             currency?: string | null;
             /**
              * Price Mode
-             * @default approximate
+             * @default exact
              * @enum {string}
              */
-            price_mode: "approximate" | "from";
+            price_mode: "exact" | "approximate" | "from";
             /**
              * Surprise Visibility
              * @default friends
@@ -488,7 +488,7 @@ export interface components {
              * Item Type
              * @enum {string}
              */
-            item_type: "idea" | "gift" | "certificate";
+            item_type: "idea" | "gift" | "certificate" | "ticket";
             /** Title */
             title?: string | null;
             /** Description */
@@ -503,10 +503,10 @@ export interface components {
             currency?: string | null;
             /**
              * Price Mode
-             * @default approximate
+             * @default exact
              * @enum {string}
              */
-            price_mode: "approximate" | "from";
+            price_mode: "exact" | "approximate" | "from";
             /**
              * Surprise Visibility
              * @default friends
@@ -533,7 +533,7 @@ export interface components {
              * Item Type
              * @enum {string}
              */
-            item_type: "idea" | "gift" | "certificate";
+            item_type: "idea" | "gift" | "certificate" | "ticket";
             /** Title */
             title: string | null;
             /** Description */
@@ -555,7 +555,7 @@ export interface components {
              * Price Mode
              * @enum {string}
              */
-            price_mode: "approximate" | "from";
+            price_mode: "exact" | "approximate" | "from";
             /** Archived At */
             archived_at: string | null;
             /**

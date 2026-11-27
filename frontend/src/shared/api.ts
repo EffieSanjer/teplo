@@ -100,8 +100,9 @@ export function send<T>(path: string, body?: unknown, method = 'POST') {
   return api<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) })
 }
 
-export function imageUrl(id: string) {
-  return `/api/v1/media/${encodeURIComponent(id)}`
+export function imageUrl(id: string, width?: 400 | 800) {
+  const base = `/api/v1/media/${encodeURIComponent(id)}`
+  return width ? `${base}?w=${width}` : base
 }
 
 export function itemTitle(item: Pick<Item, 'title' | 'url'>) {
@@ -126,7 +127,7 @@ export function formatPrice(
   item: Pick<Item, 'price' | 'currency'> & { price_mode?: Item['price_mode'] },
 ) {
   if (item.price === null || item.price === undefined || !item.currency) return 'Бесценно'
-  const prefix = item.price_mode === 'from' ? 'От ' : ''
+  const prefix = item.price_mode === 'from' ? 'От ' : item.price_mode === 'approximate' ? '≈ ' : ''
   try {
     return (
       prefix +

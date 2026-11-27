@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, nextTick } from 'vue';
 import AppButton from '../buttons/AppButton.vue';
 
 type PriceMode = 'exact' | 'approximate' | 'from';
@@ -33,6 +34,30 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
   'update:mode': [mode: PriceMode];
 }>();
+function formatAmount(value: string) {
+  const [integer = '', fraction] = value.split('.');
+  return integer.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (fraction === undefined ? '' : `,${fraction}`);
+}
+const displayAmount = computed(() => formatAmount(props.modelValue));
+async function updateAmount(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const before = input.value.slice(0, input.selectionStart ?? input.value.length).replace(/\s/g, '').length;
+  const raw = input.value.replace(/\s/g, '').replace(',', '.');
+  if (!/^\d*(\.\d{0,2})?$/.test(raw)) {
+    input.value = displayAmount.value;
+    return;
+  }
+  emit('update:modelValue', raw);
+  await nextTick();
+  input.value = formatAmount(raw);
+  let position = 0;
+  let count = 0;
+  while (position < input.value.length && count < before) {
+    if (input.value[position] !== ' ') count++;
+    position++;
+  }
+  input.setSelectionRange(position, position);
+}
 </script>
 
 <template>
@@ -55,8 +80,8 @@ const emit = defineEmits<{
       </div>
       <input
         :id="props.id"
-        :value="props.modelValue"
-        type="number"
+        :value="displayAmount"
+        type="text"
         inputmode="decimal"
         min="0"
         :max="props.max"
@@ -64,7 +89,7 @@ const emit = defineEmits<{
         placeholder="Сумма"
         :disabled="props.disabled"
         :aria-describedby="`${props.id}-mode-hint`"
-        @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        @input="updateAmount"
       />
       <span class="price-currency" aria-hidden="true">{{ props.currency }}</span>
     </div>

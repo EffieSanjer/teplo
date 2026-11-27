@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { Spinner } from './ui';
+import ThemeCover from './ThemeCover.vue';
 
 const props = defineProps<{ ready: boolean }>();
-const visible = ref(true);
+// Survives a component remount from Vue HMR, so the splash does not flash again.
+let startupShown = false;
+const visible = ref(!startupShown);
 const startedAt = performance.now();
 let observer: MutationObserver | undefined;
 let settleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -11,6 +15,7 @@ let stopped = false;
 const cleanups = new Set<() => void>();
 
 function finish() {
+  startupShown = true;
   visible.value = false;
   stopped = true;
   observer?.disconnect();
@@ -50,7 +55,7 @@ function check() {
     return;
   }
   // Allow route transitions and newly rendered cards to settle.
-  settleTimer = setTimeout(finish, Math.max(350, 4000 - (performance.now() - startedAt)));
+  settleTimer = setTimeout(finish, Math.max(200, 2500 - (performance.now() - startedAt)));
 }
 
 watch(
@@ -69,7 +74,7 @@ watch(
         attributes: true,
         attributeFilter: ['src', 'aria-busy'],
       });
-    deadline = setTimeout(finish, 12000);
+    deadline = setTimeout(finish, 8000);
     check();
   },
   { immediate: true },
@@ -82,34 +87,175 @@ onBeforeUnmount(finish);
   <Transition name="startup">
     <div
       v-if="visible"
-      class="fixed inset-0 z-[10000] grid place-items-center bg-paper px-6 text-ink dark:bg-[#202823] dark:text-[#ede9df]"
+      class="startup-screen"
       role="status"
       aria-live="polite"
       aria-label="Загрузка приложения"
     >
-      <div class="w-full max-w-[340px]">
-        <div class="mb-6 flex items-center justify-between text-[9px] tracking-[.15em] text-muted">
-          <span>ЛИЧНОЕ ПРОСТРАНСТВО</span><span>БЕТА</span>
-        </div>
-        <div class="rounded-md bg-[#304b40] px-7 py-10 text-paper">
-          <div class="text-[60px] leading-none font-extrabold tracking-[-.065em]">
-            кстати<span class="text-sand">,</span>
+      <div class="startup-backdrop" aria-hidden="true">
+        <ThemeCover class="startup-cover" />
+        <div class="startup-shade" />
+      </div>
+      <div class="startup-plaque">
+        <div class="startup-plaque-glass" aria-hidden="true" />
+        <div class="startup-plaque-body">
+          <div class="startup-meta">
+            <span>ЛИЧНОЕ ПРОСТРАНСТВО</span><span>БЕТА</span>
           </div>
-          <h1 class="mt-9 font-editorial text-[36px] leading-[1.1] tracking-tight">
-            Маленькие<br /><em class="text-sand">желания.</em>
+          <div class="brand startup-brand">кстати<span class="brand-comma">,</span></div>
+          <h1 class="startup-title">
+            Маленькие<br /><em>желания.</em>
           </h1>
-          <p class="mt-4 text-xs leading-relaxed text-[#cbd4c6]">И подарки со смыслом.</p>
-          <div
-            class="mt-10 flex items-center gap-3 border-t border-white/15 pt-5 text-[11px] text-[#cbd4c6]"
-          >
-            <span
-              class="size-4 animate-spin rounded-full border border-white/20 border-t-sand motion-reduce:animate-none"
-              aria-hidden="true"
-            />Открываем вашу коллекцию…
+          <p class="startup-lead">И подарки со смыслом.</p>
+          <div class="startup-status">
+            <Spinner :size="16" class="text-ember" />Открываем вашу коллекцию…
           </div>
         </div>
-        <p class="mt-5 text-center text-[10px] text-muted">Для того, что хочется сохранить.</p>
       </div>
     </div>
   </Transition>
 </template>
+
+<style scoped>
+.startup-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  color: var(--ink);
+}
+.startup-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.startup-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+}
+.startup-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgb(18 40 58 / 18%) 0%,
+      transparent 42%,
+      color-mix(in srgb, var(--paper) 35%, transparent) 78%,
+      var(--paper) 100%
+    );
+}
+:root[data-theme='dark'] .startup-shade {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(8 14 22 / 42%) 0%,
+      transparent 40%,
+      color-mix(in srgb, var(--paper) 40%, transparent) 78%,
+      var(--paper) 100%
+    );
+}
+.startup-plaque {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 340px);
+  isolation: isolate;
+}
+.startup-plaque-glass {
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  border: 1px solid rgb(255 255 255 / 48%);
+  background:
+    linear-gradient(
+      165deg,
+      rgb(255 255 255 / 42%) 0%,
+      rgb(243 246 248 / 26%) 48%,
+      rgb(255 255 255 / 16%) 100%
+    );
+  box-shadow:
+    0 18px 48px rgb(12 24 36 / 14%),
+    inset 0 1px 0 rgb(255 255 255 / 65%);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  backdrop-filter: blur(16px) saturate(1.15);
+  pointer-events: none;
+}
+:root[data-theme='dark'] .startup-plaque-glass {
+  border-color: rgb(255 255 255 / 14%);
+  background:
+    linear-gradient(
+      165deg,
+      rgb(255 255 255 / 10%) 0%,
+      rgb(16 22 30 / 34%) 50%,
+      rgb(12 16 22 / 42%) 100%
+    );
+  box-shadow:
+    0 18px 48px rgb(0 0 0 / 30%),
+    inset 0 1px 0 rgb(255 255 255 / 12%);
+}
+.startup-plaque-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.35rem 1.4rem 1.45rem;
+}
+.startup-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+:root[data-theme='dark'] .startup-meta {
+  color: rgb(255 255 255 / 62%);
+}
+.startup-brand {
+  font-size: 42px;
+}
+.startup-title {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(30px, 8vw, 36px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.startup-title em {
+  color: var(--ember);
+  font-style: italic;
+}
+.startup-lead,
+.startup-status {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+:root[data-theme='dark'] .startup-title,
+:root[data-theme='dark'] .startup-brand {
+  color: #fff;
+}
+:root[data-theme='dark'] .startup-lead,
+:root[data-theme='dark'] .startup-status {
+  color: rgb(255 255 255 / 72%);
+}
+.startup-status {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+:root[data-theme='dark'] .startup-status {
+  border-top-color: rgb(255 255 255 / 12%);
+}
+</style>

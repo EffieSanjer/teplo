@@ -4,8 +4,10 @@ import { X } from 'lucide-vue-next';
 import { lockVerticalSwipes } from '../integrations/telegram';
 import { AppButton } from './ui';
 
+defineOptions({ inheritAttrs: false });
+
 // The wish editor is edge-to-edge and supplies its own close button on the photo.
-withDefaults(defineProps<{ title: string; bare?: boolean }>(), { bare: false });
+const props = withDefaults(defineProps<{ title: string; bare?: boolean; closeOnBackdrop?: boolean }>(), { bare: false, closeOnBackdrop: false });
 const emit = defineEmits<{ close: [] }>();
 
 const dialog = ref<HTMLDialogElement>();
@@ -15,6 +17,18 @@ let viewportFrame = 0;
 let releaseSwipes: (() => void) | undefined;
 // Only explicit close buttons may dismiss a dialog: no backdrop click, no Escape.
 function keepOpen() {}
+let backdropStarted = false;
+function outside(event: MouseEvent) {
+  if (event.target !== dialog.value || !dialog.value) return false;
+  const bounds = dialog.value.getBoundingClientRect();
+  return event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
+}
+function backdropClick(event: MouseEvent) {
+  if (props.closeOnBackdrop) {
+    if (backdropStarted && outside(event)) emit('close');
+  } else if (!props.bare && event.target === dialog.value) emit('close');
+  backdropStarted = false;
+}
 
 function fitKeyboard() {
   cancelAnimationFrame(viewportFrame);
@@ -67,17 +81,19 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <dialog
+      v-bind="$attrs"
       ref="dialog"
-      class="modal max-w-none overflow-y-auto overscroll-contain bg-paper text-ink dark:bg-[#202823] dark:text-[#ede9df]"
+      class="modal max-w-none overflow-y-auto overscroll-contain bg-paper text-ink"
       :class="
         bare
-          ? 'm-0 h-[var(--keyboard-height,100dvh)] max-h-none w-full rounded-none border-0 p-0 shadow-none min-[641px]:m-auto min-[641px]:h-auto min-[641px]:max-h-[calc(var(--keyboard-height,100dvh)-16px)] min-[641px]:w-[min(820px,calc(100vw-20px))] min-[641px]:rounded-lg min-[641px]:border min-[641px]:border-line min-[641px]:shadow-xl min-[641px]:dark:border-[#475349]'
-          : 'm-auto max-h-[calc(var(--keyboard-height,100dvh)-16px)] w-[min(820px,calc(100vw-20px))] rounded-lg border border-line p-4 shadow-xl min-[641px]:p-6 dark:border-[#475349]'
+          ? 'modal-shell modal-shell-bare m-0 h-[var(--keyboard-height,100dvh)] max-h-none w-full rounded-none border-0 p-0 shadow-none min-[641px]:m-auto min-[641px]:h-auto min-[641px]:max-h-[calc(var(--keyboard-height,100dvh)-16px)] min-[641px]:w-[min(820px,calc(100vw-20px))] min-[641px]:rounded-[28px] min-[641px]:border min-[641px]:border-white/35 min-[641px]:shadow-[0_24px_80px_rgb(12_24_36_/_22%)]'
+          : 'modal-shell m-auto max-h-[calc(var(--keyboard-height,100dvh)-16px)] w-[min(820px,calc(100vw-20px))] rounded-[24px] border border-white/40 p-4 shadow-[0_24px_80px_rgb(12_24_36_/_18%)] min-[641px]:p-6'
       "
       :aria-label="bare ? title : undefined"
       :aria-labelledby="bare ? undefined : 'modal-title'"
       @cancel.prevent="keepOpen"
-      @click="!bare && $event.target === dialog && emit('close')"
+      @pointerdown="backdropStarted = outside($event)"
+      @click="backdropClick"
     >
       <div class="modal-inner">
         <header

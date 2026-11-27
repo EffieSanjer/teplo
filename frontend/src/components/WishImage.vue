@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-const props = defineProps<{ src: string; isIcon?: boolean }>();
-const emit = defineEmits<{ load: [event: Event] }>();
+const props = withDefaults(
+  defineProps<{
+    src: string;
+    isIcon?: boolean;
+    loading?: 'lazy' | 'eager';
+    fetchpriority?: 'high' | 'low' | 'auto';
+  }>(),
+  { loading: 'lazy', fetchpriority: 'auto' },
+);
+const emit = defineEmits<{ load: [event: Event]; error: [event: Event] }>();
 const width = ref(0),
   height = ref(0);
 watch(
@@ -33,7 +41,16 @@ function loaded(event: Event) {
 </script>
 
 <template>
-  <img :src="src" :class="{ 'site-icon': compact }" :style="iconStyle" @load="loaded" />
+  <img
+    :src="src"
+    :class="{ 'site-icon': compact }"
+    :style="iconStyle"
+    :loading="loading"
+    :fetchpriority="fetchpriority"
+    decoding="async"
+    @load="loaded"
+    @error="emit('error', $event)"
+  />
 </template>
 
 <style scoped src="../styles/scoped/wish-image.css"></style>

@@ -4,6 +4,8 @@ interface TelegramApp {
   expand(): void
   openLink(url: string): void
   openTelegramLink?(url: string): void
+  disableVerticalSwipes?(): void
+  enableVerticalSwipes?(): void
   BackButton: {
     show(): void
     hide(): void
@@ -153,6 +155,18 @@ export function backButton(visible: boolean, callback: () => void) {
   else sdk.BackButton.hide()
   sdk.BackButton.onClick(callback)
   return () => sdk.BackButton.offClick(callback)
+}
+// A downward swipe closes/minimizes the Mini App. Suspended while dialogs are open so
+// scrolling inside them cannot accidentally close it; nested dialogs share one lock.
+let swipeLocks = 0
+export function lockVerticalSwipes() {
+  const sdk = app()
+  swipeLocks += 1
+  if (swipeLocks === 1) sdk?.disableVerticalSwipes?.()
+  return () => {
+    swipeLocks = Math.max(0, swipeLocks - 1)
+    if (swipeLocks === 0) sdk?.enableVerticalSwipes?.()
+  }
 }
 export function shareInvitation(url: string) {
   const target = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('Давай делиться желаниями в «Кстати»')}`

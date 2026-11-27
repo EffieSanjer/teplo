@@ -10,7 +10,7 @@
     @apply pointer-events-none absolute left-7 top-7 z-30 min-h-0 p-0;
   }
   .photo-header .form-back {
-    @apply pointer-events-auto size-10 border border-white/30 bg-paper/75 shadow-sm backdrop-blur-xl dark:bg-[#202823]/75;
+    @apply pointer-events-auto size-10 border border-white/30 bg-white/80 text-ink shadow-sm backdrop-blur-xl dark:border-white/20 dark:bg-black/45 dark:text-cream;
   }
   .form-intro {
     @apply mb-5 text-xs leading-relaxed text-muted;
@@ -43,7 +43,7 @@
     @apply relative;
   }
   .store-select__trigger {
-    @apply flex min-h-11 w-full items-center gap-2 rounded border border-line bg-surface px-3 text-left text-sm dark:bg-[#202823];
+    @apply flex min-h-11 w-full items-center gap-2 rounded border border-line bg-surface px-3 text-left text-sm dark:bg-paper;
   }
   .store-select__icon {
     @apply size-6 shrink-0 rounded object-contain;
@@ -52,7 +52,7 @@
     @apply min-w-0 flex-1 truncate;
   }
   .store-select__list {
-    @apply absolute inset-x-0 top-full z-40 mt-1 max-h-60 overflow-y-auto rounded border border-line bg-surface p-1 shadow-lg dark:bg-[#2b362e];
+    @apply absolute inset-x-0 top-full z-40 mt-1 max-h-60 overflow-y-auto rounded border border-line bg-surface p-1 shadow-lg dark:bg-surface;
   }
   .store-select__option {
     @apply flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-forest/10 dark:hover:bg-paper/10;
@@ -80,7 +80,7 @@
     @apply mt-0;
   }
   .input-with-icon {
-    @apply relative mt-2 flex items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-[#202823];
+    @apply relative mt-2 flex items-center gap-2 rounded border border-line bg-surface px-3 dark:bg-paper;
   }
   .input-with-icon input {
     @apply min-w-0 flex-1 border-0 bg-transparent px-0 pr-8 focus:ring-0;
@@ -105,15 +105,34 @@
     @apply mt-3 flex items-center gap-2 text-xs text-forest dark:text-sand;
   }
   .photo-section {
-    @apply relative -mx-1 pt-3;
+    @apply relative -mx-4 pt-0;
   }
   .upload-area {
-    @apply relative flex w-full flex-col items-center justify-center overflow-hidden border border-forest/10 bg-forest px-5 pb-20 pt-10 text-paper dark:bg-forest dark:text-paper;
-    border-radius: 32px;
+    @apply relative flex w-full flex-col items-center justify-center overflow-hidden border px-5 pb-20 pt-10 text-cream;
+    border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-radius: 0 0 28px 28px;
     height: clamp(340px, 52svh, 500px);
+    background:
+      radial-gradient(ellipse at 12% 10%, color-mix(in srgb, var(--accent) 45%, #9ec8d4), transparent 55%),
+      linear-gradient(160deg, color-mix(in srgb, var(--accent) 78%, #2f6878), color-mix(in srgb, var(--accent) 55%, #1a3a48));
+  }
+  :root[data-theme='dark'] .upload-area {
+    border-color: rgb(255 255 255 / 10%);
+    background:
+      radial-gradient(ellipse at 12% 10%, color-mix(in srgb, var(--accent) 30%, #4a8a9a), transparent 55%),
+      linear-gradient(160deg, color-mix(in srgb, var(--accent) 40%, #243f4c), color-mix(in srgb, var(--paper) 35%, #121c26));
+  }
+  .visibility-options {
+    @apply grid grid-cols-2 gap-1 rounded-full border border-line bg-surface p-1;
+  }
+  .visibility-options button {
+    @apply min-h-11 rounded-full px-3 text-sm text-muted;
+  }
+  .visibility-options button[aria-pressed='true'] {
+    @apply bg-forest text-on-accent shadow-sm;
   }
   .upload-area.has-photo {
-    @apply border-transparent bg-[#202823];
+    @apply border-transparent bg-[var(--board)];
   }
   .upload-area.has-photo::after {
     content: '';
@@ -130,32 +149,32 @@
     @apply z-10 flex min-h-11 flex-col items-center gap-3 rounded-xl px-5 py-3 text-center text-sm font-semibold hover:bg-forest/5 dark:hover:bg-paper/5;
   }
   .upload-icon {
-    @apply flex size-14 items-center justify-center rounded-full bg-paper/80 shadow-sm dark:bg-paper/10;
+    @apply flex size-14 items-center justify-center rounded-full bg-white/80 text-ink shadow-sm dark:bg-white/12 dark:text-cream;
   }
   .upload-hint {
     @apply z-10 mt-2 text-center text-xs opacity-75;
   }
   .photo-error {
-    @apply absolute inset-x-3 bottom-20 z-20 rounded-lg bg-paper/95 px-3 py-2 text-center text-xs text-[#a04432] shadow dark:bg-[#202823]/95;
+    @apply absolute inset-x-3 bottom-20 z-20 rounded-lg bg-surface/95 px-3 py-2 text-center text-xs text-[#a04432] shadow;
   }
   .photo-progress {
-    @apply absolute bottom-20 z-20 rounded-full bg-paper px-4 py-2 text-sm text-ink shadow dark:bg-[#202823] dark:text-paper;
+    @apply absolute bottom-20 z-20 rounded-full bg-white/90 px-4 py-2 text-sm text-ink shadow dark:bg-black/55 dark:text-cream;
   }
   .certificate-close {
-    @apply absolute right-4 top-4 z-20 size-10 rounded-full bg-paper/90 text-ink shadow dark:bg-[#202823]/90 dark:text-paper min-[641px]:right-6 min-[641px]:top-6;
+    @apply absolute right-4 top-4 z-20 size-10 rounded-full bg-white/90 text-ink shadow dark:bg-black/55 dark:text-cream min-[641px]:right-6 min-[641px]:top-6;
   }
   .form-back {
-    @apply relative size-11 shrink-0 rounded-full bg-surface text-ink dark:bg-[#2b362e] dark:text-paper;
+    @apply relative size-11 shrink-0 rounded-full bg-surface text-ink;
   }
   .photo-actions {
     @apply absolute right-4 top-4 z-20 flex gap-2;
   }
   .photo-edit,
   .photo-delete {
-    @apply size-10 rounded-full border border-white/30 bg-paper/75 text-ink shadow-sm backdrop-blur-xl dark:bg-[#202823]/75 dark:text-paper;
+    @apply size-10 rounded-full border border-white/30 bg-white/80 text-ink shadow-sm backdrop-blur-xl dark:border-white/20 dark:bg-black/45 dark:text-cream;
   }
   .photo-url-details {
-    @apply absolute inset-x-5 bottom-5 z-20 flex items-center gap-0 rounded-full border border-white/30 bg-paper/75 p-0 text-xs shadow-sm backdrop-blur-xl dark:bg-[#202823]/75;
+    @apply absolute inset-x-5 bottom-5 z-20 flex items-center gap-0 rounded-full border border-white/30 bg-white/80 p-0 text-xs text-ink shadow-sm backdrop-blur-xl dark:border-white/20 dark:bg-black/45 dark:text-cream;
     width: 40px;
     min-height: 40px;
     left: auto;
@@ -169,7 +188,7 @@
     @apply size-10 min-h-10 px-0;
   }
   .photo-url-toggle {
-    @apply flex size-10 min-h-10 shrink-0 items-center justify-center rounded-full bg-transparent p-0 text-sm text-ink hover:bg-forest/5 dark:text-paper dark:hover:bg-paper/5;
+    @apply flex size-10 min-h-10 shrink-0 items-center justify-center rounded-full bg-transparent p-0 text-sm text-ink hover:bg-forest/5 dark:text-cream dark:hover:bg-white/10;
     transition: width 260ms ease, background-color 180ms ease;
   }
   .photo-url-field {
@@ -193,15 +212,39 @@
     @apply w-full min-w-0 border-0 bg-transparent text-base focus:ring-0;
   }
   .certificate-store-panel {
-    @apply relative -mx-1 mb-5 mt-3 flex flex-col justify-end overflow-hidden rounded-[32px] pb-3 pt-16 text-center text-paper;
+    @apply relative -mx-1 mb-5 mt-3 flex flex-col justify-end overflow-hidden rounded-[28px] pb-3 pt-16 text-center text-cream;
     min-height: clamp(340px, 52svh, 500px);
-    background: radial-gradient(ellipse at 10% 10%, #a4ad83, transparent 60%),
-      radial-gradient(ellipse at 95% 85%, #837b95, transparent 65%), #354f40;
+    background:
+      radial-gradient(ellipse at 10% 10%, color-mix(in srgb, var(--accent) 55%, #9ec8d4), transparent 60%),
+      radial-gradient(ellipse at 95% 85%, color-mix(in srgb, var(--accent) 40%, #7a8fb0), transparent 65%),
+      color-mix(in srgb, var(--accent) 70%, #2f5478);
+  }
+  :root[data-theme='dark'] .certificate-store-panel {
+    background:
+      radial-gradient(ellipse at 10% 10%, color-mix(in srgb, var(--accent) 38%, #4a8a9a), transparent 60%),
+      radial-gradient(ellipse at 95% 85%, color-mix(in srgb, var(--accent) 28%, #243f4c), transparent 65%),
+      color-mix(in srgb, var(--paper) 35%, #1a3644);
   }
   .certificate-offer {
-    background: linear-gradient(110deg, #354f40 0%, #667c60 48%, #9ba78a 100%);
-    color: #faf7ee;
-    box-shadow: inset 0 0 16px rgb(255 255 255 / 35%), 0 8px 0 -4px rgb(114 121 107 / 16%), 0 16px 0 -9px rgb(114 121 107 / 10%);
+    background: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--accent) 75%, #2f5478) 0%,
+      color-mix(in srgb, var(--accent) 45%, #5f87ab) 48%,
+      color-mix(in srgb, var(--accent) 20%, #9eb6c9) 100%
+    );
+    color: #f4f8fc;
+    box-shadow:
+      inset 0 0 16px rgb(255 255 255 / 28%),
+      0 8px 0 -4px color-mix(in srgb, var(--accent) 18%, transparent),
+      0 16px 0 -9px color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  :root[data-theme='dark'] .certificate-offer {
+    background: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--accent) 40%, #1a3644) 0%,
+      color-mix(in srgb, var(--accent) 28%, #2f5478) 48%,
+      color-mix(in srgb, var(--accent) 18%, #4a6f84) 100%
+    );
   }
   .certificate-offer .certificate-carousel-cover {
     @apply py-3;
@@ -237,7 +280,7 @@
     scrollbar-color: rgb(255 255 255 / 30%) transparent;
   }
   .certificate-store-tile {
-    @apply flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-white/20 bg-white/15 px-2 py-4 text-paper backdrop-blur-md transition-all hover:bg-white/25;
+    @apply flex w-24 shrink-0 flex-col items-center gap-2 rounded-2xl border border-white/20 bg-white/15 px-2 py-4 text-cream backdrop-blur-md transition-all hover:bg-white/25;
     scroll-snap-align: center;
   }
   .certificate-store-tile.selected {
@@ -282,7 +325,13 @@
     }
   }
   .item-form .type-switch {
-    @apply mt-5;
+    @apply mt-5 grid-cols-3;
+  }
+  .item-form .type-switch button {
+    @apply px-1.5 text-[13px];
+  }
+  .item-form .type-switch button span {
+    @apply truncate;
   }
   .personal-description .description-hint {
     @apply mt-1 text-right;
@@ -291,15 +340,34 @@
     @apply grid gap-4 border-t border-line pt-5;
   }
   .most-wanted-toggle {
-    @apply relative inline-flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-full border border-forest/20 px-5 py-3 text-sm font-semibold text-paper;
-    background-image: linear-gradient(110deg, #28553f 0%, #789849 30%, #c4ae65 60%, #45816a 82%, #28553f 100%);
+    @apply relative inline-flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-full border px-5 py-3 text-sm font-semibold text-cream;
+    border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+    background-image: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--accent) 85%, #2f6878) 0%,
+      color-mix(in srgb, var(--accent) 45%, #6a9aab) 30%,
+      color-mix(in srgb, var(--ember) 55%, #c4ae65) 60%,
+      color-mix(in srgb, var(--accent) 55%, #4a8a9a) 82%,
+      color-mix(in srgb, var(--accent) 85%, #2f6878) 100%
+    );
     background-size: 300% 100%;
     transition: color 220ms ease, box-shadow 220ms ease;
   }
+  :root[data-theme='dark'] .most-wanted-toggle {
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    background-image: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--accent) 55%, #1a3a48) 0%,
+      color-mix(in srgb, var(--accent) 35%, #4a8a9a) 30%,
+      color-mix(in srgb, var(--ember) 40%, #a8904a) 60%,
+      color-mix(in srgb, var(--accent) 40%, #3a6a7a) 82%,
+      color-mix(in srgb, var(--accent) 55%, #1a3a48) 100%
+    );
+  }
   .most-wanted-toggle.selected {
-    @apply border-forest/40;
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
     animation: wish-shimmer 5s ease-in-out infinite;
-    box-shadow: 0 0 0 3px rgb(102 124 85 / 15%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
   }
   .most-wanted-toggle.selected svg {
     animation: wish-heart 350ms ease;
@@ -327,10 +395,10 @@
     color: var(--ink);
   }
   .item-form .form-cancel {
-    @apply shrink-0 bg-paper px-4 hover:bg-surface dark:bg-[#2b362e];
+    @apply shrink-0 bg-paper px-4 hover:bg-surface dark:bg-surface;
   }
   .price-value {
-    @apply mt-2 flex w-full min-w-0 items-center rounded border border-line bg-surface px-3 py-2 dark:bg-[#202823];
+    @apply mt-2 flex w-full min-w-0 items-center rounded border border-line bg-surface px-3 py-2 dark:bg-paper;
   }
   .price-value input {
     @apply w-0 min-w-0 flex-1 border-0 bg-transparent px-4 text-left focus:ring-0;
@@ -342,7 +410,7 @@
     @apply inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-transparent px-2 text-sm text-muted transition-colors hover:bg-forest/5 dark:hover:bg-paper/5;
   }
   .price-option.selected {
-    @apply border-forest bg-forest text-paper hover:bg-forest dark:border-sand dark:bg-sand dark:text-[#202823];
+    @apply border-forest bg-forest text-on-accent hover:bg-forest dark:border-sand dark:bg-sand;
   }
   .price-currency {
     @apply ml-auto shrink-0 px-1 text-lg font-semibold leading-none text-muted;

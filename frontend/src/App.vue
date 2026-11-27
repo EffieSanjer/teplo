@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowUpRight, Bookmark, LogOut, MessageCircle, ShieldCheck, Users } from 'lucide-vue-next';
+import { ArrowUpRight, Bookmark, Layers, LogOut, ShieldCheck, Users } from 'lucide-vue-next';
 import {
   ApiError,
   api,
@@ -22,9 +22,13 @@ import {
   onLaunchChange,
 } from './integrations/telegram';
 import { invitationToken } from './shared/invitation';
-import ThemeControl from './components/ThemeControl.vue';
+import SettingsControl from './components/SettingsControl.vue';
 import StartupScreen from './components/StartupScreen.vue';
 import { avatarFallback, sampleAvatarPalette } from './shared/avatarPalette';
+import ThemeCover from './components/ThemeCover.vue';
+import { AppButton, FieldMessage, LoadingLabel, ToastMessage } from './components/ui';
+
+const showUiKitLink = import.meta.env.DEV;
 
 watchEffect((onCleanup) => {
   const id = session.value?.user.id;
@@ -100,7 +104,8 @@ async function login(dev = false) {
   busy.value = true;
   error.value = '';
   try {
-    clearSession();
+    // A 401 from bootstrap has already cleared it; avoid a second remount.
+    if (session.value) clearSession();
     session.value = await send<Session>(
       dev ? '/auth/dev' : '/auth/telegram',
       dev ? undefined : { init_data: initData() },
@@ -122,7 +127,9 @@ async function bootstrap() {
       await openLaunchTarget();
     } catch (e) {
       if (!(e instanceof ApiError) || e.status !== 401) throw e;
-      if (initData() && config.value.telegram_enabled) await login();
+      // Local dev stack: enter immediately as the user configured by DEV_USER_ID.
+      if (config.value.dev_login_enabled) await login(true);
+      else if (initData() && config.value.telegram_enabled) await login();
     }
   } catch (e) {
     error.value = (e as Error).message;
@@ -146,15 +153,19 @@ onMounted(async () => {
     if (session.value) void openLaunchTarget().catch(() => {});
   };
   cleanupLaunch = onLaunchChange(resume);
-  void initTelegram()
-    .then(async () => {
-      if (disposed) return;
-      cleanupLaunch();
-      cleanupLaunch = onLaunchChange(resume);
-      if (session.value) await openLaunchTarget();
-    })
-    .catch(() => {});
+  const telegramReady = initTelegram().catch(() => undefined);
+  // A Vue HMR remount keeps the shared session/auth refs; do not rebootstrap
+  // or run the splash transition again just because the component was replaced.
+  if (authReady.value && session.value) return;
   await bootstrap();
+  if (disposed) return;
+  await telegramReady;
+  if (disposed) return;
+  cleanupLaunch();
+  cleanupLaunch = onLaunchChange(resume);
+  if (session.value) await openLaunchTarget();
+  // SDK may expose fresher initData after bootstrap; retry once if still logged out.
+  else if (config.value.telegram_enabled && initData() && !busy.value) await login();
 });
 onBeforeUnmount(() => {
   disposed = true;
@@ -166,10 +177,22 @@ onBeforeUnmount(() => {
 <template>
   <StartupScreen :ready="authReady && !busy" />
   <div class="app-shell min-h-dvh">
-    <div v-if="!session" class="login-theme"><ThemeControl /></div>
-    <main v-if="session" class="main-content min-h-dvh">
+    <main
+      v-if="session"
+      class="main-content min-h-dvh"
+      :class="{
+        'friends-shell': route.path === '/friends',
+        'wishlist-shell': route.path === '/me' || route.path.startsWith('/users/'),
+      }"
+    >
       <header
-        class="topbar mx-auto flex min-h-[72px] max-w-[1440px] items-center gap-4 px-5 min-[761px]:px-10"
+        class="topbar mx-auto flex min-h-[84px] max-w-[1440px] items-center gap-4 px-5 min-[761px]:px-10"
+        :class="{
+          'topbar-over-hero':
+            route.path === '/friends' ||
+            route.path === '/me' ||
+            route.path.startsWith('/users/'),
+        }"
       >
         <div class="brand-block">
           <RouterLink to="/me" class="brand" aria-label="Кстати — мой вишлист"
@@ -177,28 +200,32 @@ onBeforeUnmount(() => {
           >
         </div>
         <nav
-          class="main-nav ml-auto hidden items-center gap-1 min-[761px]:flex [&_a]:flex [&_a]:min-h-10 [&_a]:items-center [&_a]:gap-2 [&_a]:rounded [&_a]:px-4 [&_a]:text-sm [&_a.current]:bg-forest [&_a.current]:text-paper"
+          class="main-nav ml-auto hidden items-center gap-1 min-[761px]:flex"
           aria-label="Основная навигация"
         >
           <RouterLink to="/me" :class="{ current: route.path === '/me' }"
             ><Bookmark :size="18" />Мой вишлист</RouterLink
           >
-          <RouterLink to="/friends" :class="{ current: route.path !== '/me' }"
+          <RouterLink to="/friends" :class="{ current: route.path === '/friends' }"
             ><Users :size="18" />Друзья</RouterLink
           >
+          <RouterLink v-if="showUiKitLink" to="/ui" :class="{ current: route.path === '/ui' }"
+            ><Layers :size="18" />UI-кит</RouterLink
+          >
         </nav>
-        <div v-if="route.path !== '/friends'" class="appearance-control ml-auto min-[761px]:ml-0">
-          <ThemeControl />
+        <div class="appearance-control ml-auto min-[761px]:ml-0">
+          <SettingsControl />
         </div>
         <div v-if="showAccountControls" class="topbar-actions flex items-center gap-2">
-          <ThemeControl v-if="route.path !== '/friends'" /><button
-            class="icon-button logout-button"
-            aria-label="Выйти"
+          <AppButton
+            variant="icon"
+            class="logout-button"
+            label="Выйти"
             :title="`Выйти · ${session.user.display_name}`"
             @click="logout"
           >
             <LogOut :size="19" />
-          </button>
+          </AppButton>
         </div>
       </header>
       <RouterView
@@ -207,57 +234,69 @@ onBeforeUnmount(() => {
         ><Transition name="page" mode="out-in"><component :is="Component" /></Transition
       ></RouterView>
     </main>
-    <main v-else class="login-page welcome-page">
-      <div class="login-brand brand">кстати<span class="brand-comma">,</span></div>
+    <main v-else class="welcome-page">
+      <div class="welcome-backdrop" aria-hidden="true">
+        <ThemeCover class="welcome-cover" />
+        <div class="welcome-shade" />
+      </div>
+      <div class="login-theme"><SettingsControl /></div>
       <div class="welcome-copy">
-        <span class="text-[10px] tracking-[.18em] uppercase text-muted"
-          >Для тебя и твоих людей</span
-        >
-        <h1 class="mt-5 font-editorial text-[clamp(42px,7vw,76px)] leading-[1.05] tracking-tight">
+        <div class="login-brand brand">кстати<span class="brand-comma">,</span></div>
+        <h1 class="font-editorial text-[clamp(42px,7vw,76px)] leading-[1.05] tracking-tight">
           Это тебе<br /><em>идеально подойдёт.</em>
         </h1>
-        <p class="mt-5 max-w-sm text-sm leading-relaxed text-muted">
-          Место для маленьких подсказок и больших желаний. Сохраняй то, что любишь, и находи подарки
-          для своих.
+        <p class="mt-5 max-w-sm text-sm leading-relaxed">
+          Сохраняй желания и находи подарки для своих.
         </p>
       </div>
       <div class="login-card welcome-card">
-        <div class="login-art" aria-hidden="true">
-          <Bookmark :size="28" :stroke-width="1.2" />
+        <div class="welcome-card-glass" aria-hidden="true" />
+        <div class="welcome-card-body">
+          <div class="login-art" aria-hidden="true">
+            <Bookmark :size="28" :stroke-width="1.2" />
+          </div>
+          <h2 class="font-editorial text-2xl">Войти</h2>
+          <p>Вишлисты и сюрпризы — рядом.</p>
+          <LoadingLabel v-if="!authReady" label="Загрузка…" role="status" />
+          <template v-else
+            ><AppButton
+              v-if="config.dev_login_enabled"
+              variant="primary"
+              class="login-button"
+              :loading="busy"
+              loading-text="Входим…"
+              @click="login(true)"
+            >
+              {{ busy ? 'Входим…' : 'Войти в локальную версию'
+              }}<ArrowUpRight :size="18" /></AppButton
+            ><AppButton
+              v-else-if="initData() && config.telegram_enabled"
+              variant="primary"
+              :loading="busy"
+              loading-text="Проверяем доступ…"
+              @click="login()"
+            >
+              {{ busy ? 'Проверяем доступ…' : 'Войти' }}
+            </AppButton>
+            <FieldMessage v-else-if="!error" class="inline-hint">
+              Откройте приложение через бота.
+            </FieldMessage>
+            <p v-if="config.dev_login_enabled" class="login-disclaimer">
+              <ShieldCheck :size="14" />Локальная тестовая версия
+            </p>
+            <FieldMessage v-if="error" class="inline-error" kind="error" role="alert">
+              {{ error }}
+            </FieldMessage>
+            <AppButton v-if="error" variant="text" @click="bootstrap">
+              Повторить подключение
+            </AppButton></template
+          >
         </div>
-        <h2 class="font-editorial text-2xl">Твой список начинается здесь</h2>
-        <p>Вишлисты друзей, любимые магазины и сюрпризы — рядом.</p>
-        <div v-if="!authReady" class="muted" role="status">Загрузка…</div>
-        <template v-else
-          ><button
-            v-if="config.dev_login_enabled"
-            class="button primary login-button"
-            :disabled="busy"
-            @click="login(true)"
-          >
-            {{ busy ? 'Входим…' : 'Войти в локальную версию' }}<ArrowUpRight :size="18" /></button
-          ><button
-            v-else-if="initData() && config.telegram_enabled"
-            class="button primary"
-            :disabled="busy"
-            @click="login()"
-          >
-            {{ busy ? 'Проверяем доступ…' : 'Войти' }}
-          </button>
-          <p v-else-if="!error" class="inline-hint">Откройте приложение через бота.</p>
-          <p v-if="config.dev_login_enabled" class="login-disclaimer">
-            <ShieldCheck :size="14" />Локальная тестовая версия
-          </p>
-          <p v-if="error" class="inline-error" role="alert">{{ error }}</p>
-          <button v-if="error" class="text-button" @click="bootstrap">
-            Повторить подключение
-          </button></template
-        >
       </div>
     </main>
     <nav
       v-if="session"
-      class="mobile-nav fixed bottom-[max(16px,env(safe-area-inset-bottom))] left-1/2 z-40 flex -translate-x-1/2 gap-1 rounded-full border border-line bg-paper p-1.5 shadow-lg min-[761px]:hidden dark:border-[#475349] dark:bg-[#202823] [&_a]:flex [&_a]:min-h-12 [&_a]:min-w-28 [&_a]:items-center [&_a]:justify-center [&_a]:gap-2 [&_a]:rounded-full [&_a]:px-4 [&_a]:text-xs [&_a.current]:bg-forest [&_a.current]:text-paper"
+      class="mobile-nav fixed bottom-[max(16px,env(safe-area-inset-bottom))] left-1/2 z-40 flex -translate-x-1/2 gap-1 min-[761px]:hidden"
       aria-label="Навигация на телефоне"
     >
       <RouterLink to="/me" :class="{ current: route.path === '/me' }"
@@ -268,10 +307,8 @@ onBeforeUnmount(() => {
         ><span>Друзья</span></RouterLink
       >
     </nav>
-    <Transition name="toast"
-      ><div v-if="notice" class="toast-message" role="status">
-        <ShieldCheck :size="18" />{{ notice }}
-      </div></Transition
-    >
+    <Transition name="toast">
+      <ToastMessage v-if="notice" :message="notice" />
+    </Transition>
   </div>
 </template>

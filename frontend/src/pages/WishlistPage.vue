@@ -5,7 +5,6 @@ import {
   Archive,
   ArrowLeft,
   Bookmark,
-  ChevronDown,
   Gift,
   LockKeyhole,
   Plus,
@@ -52,48 +51,45 @@ function openDetail(item: Item, origin: CardOrigin) {
   detailOrigin.value = origin;
   detail.value = item;
 }
-const initialType = ref<Item['item_type']>('idea');
+const initialType = ref<Item['item_type']>('gift');
 const busy = ref(false),
   deleteError = ref('');
-const avatarFailed = ref(false);
 const avatarPalette = ref<AvatarPalette>();
 const friendCounts = ref({ wishes: 0, surprises: 0 });
-const avatarStyle = computed(() => ({
-  '--contrast-ink': portraitInk(
-    (avatarPalette.value || avatarFallback(recipientId.value)).primary,
-    theme.value === 'dark',
-  ),
-  '--avatar-tone': (avatarPalette.value || avatarFallback(recipientId.value)).primary,
-  '--avatar-secondary': (avatarPalette.value || avatarFallback(recipientId.value)).secondary,
-}));
 const ownName = computed(() => session.value?.user.display_name || '');
-const ownInitials = computed(() =>
-  ownName.value
-    .split(/\s+/)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join(''),
-);
-watch(
-  () => session.value?.user.id,
-  () => {
-    avatarFailed.value = false;
-    avatarPalette.value = undefined;
-  },
-);
-function avatarLoaded(event: Event) {
-  avatarPalette.value = sampleAvatarPalette(event.target as HTMLImageElement);
-}
 watchEffect((onCleanup) => {
   if (!own.value) return;
-  const tone = (avatarPalette.value || avatarFallback(recipientId.value)).primary;
-  document.documentElement.style.setProperty('--profile-canvas-tone', tone);
-  document.documentElement.style.setProperty(
-    '--page-contrast-ink',
-    portraitInk(tone, theme.value === 'dark'),
-  );
+  const id = recipientId.value;
+  let active = true;
+  const apply = (tones: AvatarPalette) => {
+    document.documentElement.style.setProperty('--profile-canvas-tone', tones.primary);
+    document.documentElement.style.setProperty('--profile-canvas-secondary', tones.secondary);
+    document.documentElement.style.setProperty(
+      '--page-contrast-ink',
+      portraitInk(tones.primary, theme.value === 'dark'),
+    );
+  };
+  apply(avatarPalette.value || avatarFallback(id));
+  const image = new Image();
+  image.onload = () => {
+    const sampled = sampleAvatarPalette(image);
+    if (!active) return;
+    const tones = sampled || avatarFallback(id);
+    avatarPalette.value = tones;
+    apply(tones);
+  };
+  image.onerror = () => {
+    if (!active) return;
+    avatarPalette.value = avatarFallback(id);
+    apply(avatarPalette.value);
+  };
+  image.src = `/api/v1/users/${encodeURIComponent(id)}/avatar`;
   onCleanup(() => {
+    active = false;
+    image.onload = null;
+    image.onerror = null;
     document.documentElement.style.removeProperty('--profile-canvas-tone');
+    document.documentElement.style.removeProperty('--profile-canvas-secondary');
     document.documentElement.style.removeProperty('--page-contrast-ink');
   });
 });
@@ -192,7 +188,7 @@ function closeForm() {
 }
 function add() {
   wishSeed.value = undefined;
-  initialType.value = 'idea';
+  initialType.value = 'gift';
   editing.value = undefined;
   formOpen.value = true;
 }
@@ -292,53 +288,29 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page wishlist-page pb-28" :class="{ 'own-wishlist': own, 'friend-wishlist': !own }">
-    <div
-      class="wishlist-layout mx-auto grid w-full max-w-[1440px] items-start gap-7 px-4 pt-2 min-[761px]:grid-cols-[278px_minmax(0,1fr)] min-[761px]:gap-10 min-[761px]:px-10 min-[761px]:pt-6"
+    <WishlistProfile v-if="own" :name="ownName" :user-id="recipientId" @add="add" />
+    <FriendProfile
+      v-else-if="profile"
+      :key="profile.id"
+      :user="profile"
+      prominent
+      :wish-count="friendCounts.wishes"
+      :surprise-count="friendCounts.surprises"
     >
-      <aside
-        class="wishlist-sidebar min-w-0 min-[761px]:sticky min-[761px]:top-7"
-        aria-label="Профиль вишлиста"
+      <RouterLink
+        :to="`/users/${recipientId}/wishlist`"
+        :class="{ active: listType === 'wishlist' }"
+        ><Bookmark :size="16" />Вишлист</RouterLink
       >
-        <FriendProfile v-if="!own && profile" :key="profile.id" :user="profile" prominent>
-          <template #stats-left
-            ><strong>{{ friendCounts.wishes }}</strong
-            ><span>желания</span></template
-          >
-          <template #stats-right
-            ><strong>{{ friendCounts.surprises }}</strong
-            ><span>сюрпризы</span></template
-          >
-          <RouterLink
-            :to="`/users/${recipientId}/wishlist`"
-            :class="{ active: listType === 'wishlist' }"
-            ><Bookmark :size="16" />Вишлист</RouterLink
-          ><RouterLink
-            v-if="profile.can_surprise"
-            :to="`/users/${recipientId}/surprises`"
-            :class="{ active: listType === 'surprise' }"
-            ><Gift :size="16" />Сюрпризы</RouterLink
-          >
-        </FriendProfile>
-        <WishlistProfile
-          v-if="own"
-          :name="ownName"
-          :user-id="recipientId"
-          :count="wishes.length"
-          :loading="loading"
-          @add="add"
-        />
-      </aside>
+      <RouterLink
+        v-if="profile.can_surprise"
+        :to="`/users/${recipientId}/surprises`"
+        :class="{ active: listType === 'surprise' }"
+        ><Gift :size="16" />Сюрпризы</RouterLink
+      >
+    </FriendProfile>
+    <div class="wishlist-layout">
       <section class="collection-board min-w-0" aria-label="Коллекция желаний">
-        <header v-if="!own && !profile" class="page-heading">
-          <div class="heading-context">
-            <div class="heading-title">
-              <h1 v-if="loading" class="profile-name-skeleton" aria-label="Загрузка профиля">
-                <span class="skeleton" />
-              </h1>
-              <h1 v-else>Вишлист друга</h1>
-            </div>
-          </div>
-        </header>
         <div class="wishlist-content min-w-0 w-full" :aria-busy="loading">
           <Transition name="list-content" mode="out-in">
             <div
@@ -363,39 +335,33 @@ onBeforeUnmount(() => {
               <AppButton variant="secondary" @click="load()">Попробовать ещё раз</AppButton>
             </EmptyState>
             <div v-else :key="`${recipientId}-${listType}`" class="list-content">
-              <div v-if="!own && listType === 'surprise'" class="list-note">
-                <LockKeyhole :size="16" aria-hidden="true" />
-                <p>Получатель не видит этот список.</p>
-              </div>
               <h2 class="visually-hidden">
                 {{
                   listType === 'surprise' ? 'Секретные идеи' : own ? 'Мои желания' : 'Желания друга'
                 }}
               </h2>
-              <div class="collection-heading">
-                <div>
-                  <span class="collection-eyebrow">{{
-                    listType === 'surprise'
-                      ? 'ТОЛЬКО ДЛЯ ДРУЗЕЙ'
-                      : own
-                        ? 'МОИ ЗАМЕТКИ'
-                        : 'ЛИЧНЫЕ ЗАМЕТКИ'
-                  }}</span>
-                  <h2>
-                    {{ listType === 'surprise' ? 'Секретные идеи' : own ? 'Сохранённое' : 'Желания'
-                    }}<span>{{ wishes.length }}</span>
-                  </h2>
-                </div>
+              <div v-if="!own && listType === 'surprise'" class="friend-list-tools">
+                <p class="friend-secret-note">
+                  <LockKeyhole :size="15" aria-hidden="true" />
+                  Только между вами — сюрприз останется тайной.
+                </p>
                 <AppButton
-                  v-if="(own || listType === 'surprise') && !error"
+                  v-if="!error"
                   variant="custom"
-                  class="collection-add icon-button"
-                  :label="listType === 'surprise' ? 'Добавить сюрприз' : 'Добавить желание'"
+                  class="friend-add-surprise"
+                  label="Добавить сюрприз"
                   @click="add"
                 >
-                  <Plus :size="20" />
+                  <Plus :size="18" />
                 </AppButton>
               </div>
+              <CertificateCarousel
+                v-if="listType !== 'surprise'"
+                :items="certificates"
+                :can-add="own"
+                @add="addCertificate"
+                @open="openDetail"
+              />
               <MasonryGrid v-if="wishes.length" class="collection-grid">
                 <ItemCard
                   v-for="(item, index) in wishes"
@@ -405,14 +371,8 @@ onBeforeUnmount(() => {
                   @open="openDetail"
                 />
               </MasonryGrid>
-              <CertificateCarousel
-                :items="certificates"
-                :can-add="own || listType === 'surprise'"
-                @add="addCertificate"
-                @open="openDetail"
-              />
               <EmptyState
-                v-if="!wishes.length && !certificates.length"
+                v-if="!wishes.length && (listType === 'surprise' || !certificates.length)"
                 class="collection-empty"
                 title="Здесь скоро появится первое желание"
                 :description="
@@ -430,11 +390,10 @@ onBeforeUnmount(() => {
                   <Plus :size="17" />Добавить {{ listType === 'surprise' ? 'сюрприз' : 'желание' }}
                 </AppButton>
               </EmptyState>
-              <details v-if="archivedItems.length" class="collection-archive">
+              <details v-if="archivedItems.length" class="collection-archive" open>
                 <AppButton as="summary" variant="custom">
                   <Archive :size="16" /><span>Архив</span
-                  ><span class="count">{{ archivedItems.length }}</span
-                  ><ChevronDown :size="16" />
+                  ><span class="count">{{ archivedItems.length }}</span>
                 </AppButton>
                 <MasonryGrid class="collection-grid"
                   ><ItemCard

@@ -108,7 +108,8 @@ describe('gift privacy and compact certificates', () => {
     })
     wrappers.push(wrapper)
     await wrapper.get('textarea').setValue('Любимые книги')
-    await wrapper.get('select[aria-label="Выбрать популярный магазин"]').setValue('chitai-gorod.ru')
+    await wrapper.get('.store-select__trigger').trigger('click')
+    await wrapper.get('.store-select__option[data-value="chitai-gorod.ru"]').trigger('click')
     expect((wrapper.get('input[type="url"]').element as HTMLInputElement).value).toBe(
       'https://chitai-gorod.ru/',
     )
@@ -150,7 +151,7 @@ describe('gift privacy and compact certificates', () => {
     wrappers.push(wrapper)
     expect(wrapper.find('input[type="file"]').exists()).toBe(false)
     expect(wrapper.find('input[maxlength="200"]').exists()).toBe(false)
-    expect(wrapper.get('textarea').attributes('maxlength')).toBe('100')
+    expect(wrapper.get('#personal-description-hint').text()).toContain('/ 100')
     await wrapper.get('input[type="url"]').setValue('https://example.com')
     await wrapper.get('input[type="url"]').trigger('blur')
     await flushPromises()

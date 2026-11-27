@@ -8,8 +8,8 @@ export function portraitInk(color: string, dark: boolean): string {
         .match(/.{2}/g)!
         .map((value) => parseInt(value, 16))
     : (color.match(/[\d.]+/g) || []).slice(0, 3).map(Number)
-  if (channels.length !== 3) return dark ? '#f7f8f2' : '#142019'
-  const base = dark ? [9, 12, 11] : [114, 123, 118]
+  if (channels.length !== 3) return dark ? '#f4f8fc' : '#142433'
+  const base = dark ? [12, 18, 26] : [106, 127, 147]
   const weight = dark ? 0.12 : 0.76
   const luminance = channels
     .map((channel, index) => {
@@ -17,16 +17,16 @@ export function portraitInk(color: string, dark: boolean): string {
       return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
     })
     .reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index]!, 0)
-  return (luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? '#101813' : '#f7f8f2'
+  return (luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? '#142433' : '#f4f8fc'
 }
 
 export function avatarFallback(id: string): AvatarPalette {
   const hash = Array.from(id).reduce((value, char) => value + char.charCodeAt(0), 0)
   const palettes = [
-    { primary: '#788271', secondary: '#b49a76' },
-    { primary: '#ad7267', secondary: '#765c85' },
-    { primary: '#9c8b7a', secondary: '#596e81' },
-    { primary: '#6f807a', secondary: '#b08a69' },
+    { primary: '#4a8a9a', secondary: '#9ec8d4' },
+    { primary: '#3a7a8c', secondary: '#b8a878' },
+    { primary: '#5a8898', secondary: '#a8c8d4' },
+    { primary: '#2f6878', secondary: '#b8d4dc' },
   ]
   return palettes[hash % palettes.length]!
 }

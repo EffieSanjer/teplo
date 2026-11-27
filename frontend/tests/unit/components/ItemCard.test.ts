@@ -91,6 +91,7 @@ describe('ItemCard', () => {
     const wrapper = mount(ItemCard, { props: { item, index: 0 } })
     expect(wrapper.find('.card-body p').exists()).toBe(false)
     expect(wrapper.get('h3').text()).toBe('Книга')
+    expect(wrapper.find('.wish-note-mark').exists()).toBe(false)
     expect(wrapper.find('.wish-note-excerpt').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('О природе')
     expect(wrapper.text()).not.toContain('На заметку')
@@ -113,6 +114,94 @@ describe('ItemCard', () => {
   })
   it('uses a store domain for untitled gifts', () => {
     expect(itemTitle({ title: null, url: 'https://www.example.com/product' })).toBe('example.com')
+  })
+  it('renders untitled link-only gifts as a bookmark card', () => {
+    const wrapper = mount(ItemCard, {
+      props: {
+        item: {
+          ...item,
+          title: null,
+          image_id: null,
+          url: 'https://www.wildberries.ru/catalog/123/detail.aspx',
+        },
+        index: 0,
+      },
+    })
+    expect(wrapper.classes()).toContain('link-bookmark-card')
+    expect(wrapper.find('.wish-poster').exists()).toBe(false)
+    expect(wrapper.get('.link-bookmark h3').text()).toBe('Wildberries')
+    expect(wrapper.get('.link-bookmark-hint').text()).toBe('По ссылке')
+    expect(wrapper.get('.link-bookmark-spine img').attributes('src')).toContain('wildberries')
+    expect(wrapper.get('.card-open').attributes('aria-label')).toBe('Открыть: Wildberries')
+  })
+  it('renders afisha gifts as vertical tickets with the title on the stub', () => {
+    const wrapper = mount(ItemCard, {
+      props: {
+        item: {
+          ...item,
+          title: 'Концерт',
+          image_id: 'poster',
+          url: 'https://afisha.yandex.ru/moscow/concert/show',
+        },
+        index: 0,
+      },
+    })
+    expect(wrapper.classes()).toContain('ticket-card')
+    expect(wrapper.find('.wish-poster').exists()).toBe(false)
+    expect(wrapper.find('.link-bookmark').exists()).toBe(false)
+    expect(wrapper.find('.ticket-service').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Яндекс Афиша')
+    expect(wrapper.find('.ticket-face-title').exists()).toBe(false)
+    expect(wrapper.get('.wish-type-icon').attributes('aria-label')).toBe('Билет')
+    expect(wrapper.find('.ticket-stub-icon').exists()).toBe(false)
+    expect(wrapper.get('.ticket-stub h3').text()).toBe('Концерт')
+    expect(wrapper.get('.ticket-art img').attributes('src')).toContain('poster')
+    expect(wrapper.get('.card-open').attributes('aria-label')).toBe('Открыть: Концерт')
+  })
+  it('falls back to the desk name on the face when the event title is still unknown', () => {
+    const wrapper = mount(ItemCard, {
+      props: {
+        item: {
+          ...item,
+          title: null,
+          image_id: null,
+          url: 'https://www.kassir.ru/event/123',
+        },
+        index: 0,
+      },
+    })
+    expect(wrapper.classes()).toContain('ticket-card')
+    expect(wrapper.classes()).not.toContain('link-bookmark-card')
+    expect(wrapper.get('.wish-type-icon').attributes('aria-label')).toBe('Билет')
+    expect(wrapper.get('.ticket-face-title').text()).toBe('Kassir')
+    expect(wrapper.get('.ticket-stub h3').text()).toBe('Kassir')
+    expect(wrapper.get('.card-open').attributes('aria-label')).toBe('Открыть: Kassir')
+  })
+  it('renders explicit ticket gifts from unknown desks', () => {
+    const wrapper = mount(ItemCard, {
+      props: {
+        item: {
+          ...item,
+          item_type: 'ticket',
+          title: 'Спектакль',
+          image_id: null,
+          url: 'https://theatre.example/show/1',
+        },
+        index: 0,
+      },
+    })
+    expect(wrapper.classes()).toContain('ticket-card')
+    expect(wrapper.get('.wish-type-icon').attributes('aria-label')).toBe('Билет')
+    expect(wrapper.get('.ticket-face-title').text()).toBe('Спектакль')
+    expect(wrapper.get('.ticket-stub h3').text()).toBe('Спектакль')
+  })
+  it('keeps a titled gift without a photo as a note card', () => {
+    const wrapper = mount(ItemCard, {
+      props: { item: { ...item, image_id: null, url: 'https://shop.example/item' }, index: 0 },
+    })
+    expect(wrapper.classes()).toContain('without-photo')
+    expect(wrapper.classes()).not.toContain('link-bookmark-card')
+    expect(wrapper.get('.wish-poster h3').text()).toBe('Книга')
   })
   it('shows certificate shops without prices, including older priced records', () => {
     const wrapper = mount(ItemCard, {

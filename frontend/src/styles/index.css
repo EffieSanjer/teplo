@@ -1,11 +1,13 @@
 /* Single entry point imported from src/main.ts. */
 @import 'tailwindcss';
 
+@import './fonts.css';
 @import './theme.css';
 @import './base.css';
 @import './components/controls.css';
 @import './components/collection.css';
 @import './components/friends.css';
+@import './components/wishlist.css';
 @import './components/forms.css';
 @import './components/feedback.css';
 @import './components/auth.css';

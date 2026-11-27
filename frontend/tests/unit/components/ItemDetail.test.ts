@@ -66,21 +66,29 @@ function paragraphs() {
 }
 
 function button(label: string) {
-  const found = Array.from(viewer().querySelectorAll('button')).find((entry) =>
-    entry.textContent?.includes(label),
+  const found = Array.from(viewer().querySelectorAll('button')).find(
+    (entry) =>
+      entry.getAttribute('aria-label') === label || entry.textContent?.includes(label),
   )
   if (!found) throw new Error(`no button labelled ${label}`)
   return found
 }
 
+async function openManageMenu() {
+  button('Управление желанием').click()
+  await flushPromises()
+}
+
 describe('item detail', () => {
-  it('shows the title and placeholder art without inventing a price or description', () => {
+  it('shows the title and note hero without inventing a price or description', () => {
     open()
     const dialog = viewer()
     expect(dialog.querySelector('#wish-viewer-title')?.textContent?.trim()).toBe('Подарок')
+    expect(dialog.querySelector('.wish-note-hero')).not.toBeNull()
+    expect(dialog.querySelector('.wish-note-hero-mark')).toBeNull()
     expect(dialog.textContent).not.toContain('Бесценно')
     expect(dialog.textContent).not.toContain('₽')
-    expect(dialog.textContent).toContain('Однажды')
+    expect(dialog.textContent).not.toContain('Однажды')
     expect(dialog.querySelector('img')).toBeNull()
   })
   it('shows only supplied content and available actions', async () => {
@@ -94,6 +102,7 @@ describe('item detail', () => {
     expect(
       paragraphs().some((p) => p.textContent?.includes('0') && p.textContent.includes('₽')),
     ).toBe(true)
+    await openManageMenu()
     button('Редактировать').click()
     await flushPromises()
     expect(wrapper.emitted('edit')).toHaveLength(1)
@@ -138,15 +147,16 @@ describe('item detail', () => {
     ;(viewer().querySelector('img') as HTMLImageElement).dispatchEvent(new Event('error'))
     await flushPromises()
     expect(viewer().querySelector('img')).toBeNull()
-    expect(viewer().textContent).toContain('Однажды')
-    expect(button('Редактировать').textContent).toContain('Редактировать')
+    expect(viewer().querySelector('.wish-note-hero')).not.toBeNull()
+    expect(viewer().textContent).not.toContain('Однажды')
+    await openManageMenu()
     button('Редактировать').click()
     await flushPromises()
     expect(wrapper.emitted('edit')).toHaveLength(1)
   })
   it('emits close from the dialog close button', async () => {
     const wrapper = open()
-    ;(viewer().querySelector('button[aria-label="Закрыть"]') as HTMLButtonElement).click()
+    button('Назад').click()
     await flushPromises()
     expect(wrapper.emitted('close')).toHaveLength(1)
   })

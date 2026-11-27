@@ -39,7 +39,7 @@ async function open(path = '/me') {
   })
   await router.push(path)
   await router.isReady()
-  wrapper = mount(App, { global: { plugins: [router], stubs: { ThemeControl: true } } })
+  wrapper = mount(App, { global: { plugins: [router], stubs: { SettingsControl: true } } })
   await flushPromises()
   return wrapper
 }
@@ -106,6 +106,21 @@ describe('startup on an unreliable mobile connection', () => {
       init_data: 'untrusted-launch-credentials',
     })
   })
+  it('enters immediately as the configured dev user when dev login is enabled', async () => {
+    vi.mocked(api)
+      .mockResolvedValueOnce({ dev_login_enabled: true, telegram_enabled: false })
+      .mockRejectedValueOnce(new ApiError(401, 'Нет сессии'))
+    vi.mocked(send).mockResolvedValueOnce({
+      user: { id: 'dev-user', display_name: 'Тестовый пользователь' },
+      community_id: 'personal',
+      csrf_token: 'csrf',
+    })
+    const view = await open()
+    expect(send).toHaveBeenCalledWith('/auth/dev', undefined)
+    expect(session.value?.user.id).toBe('dev-user')
+    expect(view.find('.login-page').exists()).toBe(false)
+  })
+
   it('does not wait for the optional SDK before attempting authentication', async () => {
     vi.mocked(api)
       .mockResolvedValueOnce({ dev_login_enabled: false, telegram_enabled: true })

@@ -53,7 +53,7 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="grid"
-    class="cards-grid masonry-grid grid auto-rows-[1px] grid-flow-dense items-start gap-x-3 gap-y-0"
+    class="cards-grid masonry-grid grid auto-rows-[1px] grid-flow-dense items-start gap-x-2.5 gap-y-0"
   >
     <slot />
   </div>

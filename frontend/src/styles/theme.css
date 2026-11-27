@@ -2,13 +2,24 @@
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 @theme {
-  --color-paper: #f3f0e9;
+  --color-paper: var(--paper);
   --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-forest: #354f40;
-  --color-sand: #ded2b9;
+  --color-forest: var(--accent);
+  --color-sand: var(--board-muted);
+  --color-ember: var(--ember);
+  --color-warm: var(--warm);
+  /* Always-light text for filled/gradient controls. */
+  --color-cream: #f4fafb;
+  --color-on-accent: var(--on-accent);
   --font-sans: 'Golos Text', system-ui, sans-serif;
-  --font-editorial: Georgia, serif;
+  --font-editorial: 'Source Serif 4', Georgia, serif;
+  /* One radius ladder for shells, cards, controls. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius: 12px;
 }

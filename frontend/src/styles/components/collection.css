@@ -4,27 +4,32 @@
     @apply mt-8;
   }
   .collection-archive > summary {
-    @apply mb-4 flex items-center gap-2 text-sm text-muted;
+    @apply mb-4 flex cursor-default items-center gap-2 text-sm text-muted;
+    list-style: none;
+  }
+  .collection-archive > summary::-webkit-details-marker {
+    display: none;
+  }
+  .collection-archive[open] > summary {
+    pointer-events: none;
   }
   .collection-heading {
-    @apply mb-5 flex min-h-20 items-center justify-between border-b border-line pb-5;
+    @apply mb-5 flex min-h-14 items-center justify-between border-b border-line pb-4;
   }
   .collection-heading h2 {
-    @apply mt-2 flex items-center gap-3 font-editorial text-[28px] tracking-tight;
+    @apply flex items-center gap-3 font-editorial text-[28px] tracking-tight;
   }
   .collection-heading h2 > span {
     @apply rounded-full border border-line px-2 py-1 font-sans text-xs text-muted;
   }
-  .collection-eyebrow,
-  .circle-eyebrow,
   .editor-section-label {
-    @apply text-[9px] tracking-[.15em] text-[#8d7055];
+    @apply text-xs font-medium tracking-wide text-muted;
   }
   .collection-add {
-    @apply size-10 rounded bg-forest text-paper;
+    @apply size-10 rounded-lg bg-forest text-on-accent;
   }
   .collection-grid {
-    @apply grid grid-cols-2 gap-x-3 min-[1350px]:grid-cols-3;
+    @apply grid grid-cols-2 gap-x-2.5 gap-y-0;
   }
   .collection-empty {
     @apply mt-6;

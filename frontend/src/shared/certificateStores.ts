@@ -4,11 +4,18 @@ export interface CertificateStore {
   name: string
   host: string
   icon: string
+  /** Extra hosts that resolve to the same store in the picker. */
+  aliases?: string[]
 }
 
 export const certificateStores: CertificateStore[] = [
   { name: 'Ozon', host: 'ozon.ru', icon: '/store-icons/ozon.svg' },
-  { name: 'Wildberries', host: 'wildberries.ru', icon: '/store-icons/wildberries.svg' },
+  {
+    name: 'Wildberries',
+    host: 'wildberries.ru',
+    icon: '/store-icons/wildberries.svg',
+    aliases: ['wb.ru'],
+  },
   { name: 'Яндекс Маркет', host: 'market.yandex.ru', icon: '/store-icons/yandex-market.svg' },
   { name: 'Золотое Яблоко', host: 'goldapple.ru', icon: '/store-icons/golden-apple.svg' },
   { name: 'Лэтуаль', host: 'letu.ru', icon: '/store-icons/letu.svg' },
@@ -19,10 +26,18 @@ export const certificateStores: CertificateStore[] = [
   { name: 'Lamoda', host: 'lamoda.ru', icon: '/store-icons/lamoda.svg' },
 ]
 
+function matchesHost(hostname: string, host: string) {
+  return hostname === host || hostname.endsWith(`.${host}`)
+}
+
 export function certificateStore(url: string) {
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/^www\./, '')
-    return certificateStores.find((store) => host === store.host || host.endsWith(`.${store.host}`))
+    return certificateStores.find(
+      (store) =>
+        matchesHost(host, store.host) ||
+        store.aliases?.some((alias) => matchesHost(host, alias)),
+    )
   } catch {
     return undefined
   }

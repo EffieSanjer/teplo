@@ -4,27 +4,87 @@
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 py-2.5 text-sm font-medium transition-colors;
   }
   .primary {
-    @apply bg-forest text-paper hover:bg-[#46624f];
+    @apply bg-forest text-on-accent hover:brightness-110;
   }
   .secondary {
-    @apply border border-line bg-transparent text-ink hover:bg-forest/5 dark:text-[#ede9df];
+    @apply border border-line bg-transparent text-ink hover:bg-forest/10;
   }
   .danger {
-    @apply bg-[#a04432] text-white;
+    @apply bg-[#a04432] text-cream;
   }
   .icon-button,
-  .theme-control {
-    @apply inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink dark:border-[#475349] dark:bg-[#2b362e] dark:text-[#ede9df];
+  .theme-control,
+  .settings-control {
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink;
   }
   .text-button {
-    @apply text-sm underline underline-offset-4;
+    @apply text-sm text-ink underline underline-offset-4;
+  }
+  :root[data-theme='dark'] .secondary {
+    @apply hover:bg-white/8;
+  }
+  :root[data-theme='dark'] .mobile-nav a {
+    color: rgb(255 255 255 / 82%);
   }
   .brand {
-    @apply inline-flex items-baseline font-sans text-[30px] font-extrabold tracking-[-.065em];
+    @apply inline-flex items-baseline font-sans text-[36px] font-extrabold tracking-[-.065em];
   }
   .brand-comma {
-    @apply text-[#9c7355];
+    @apply text-ember;
   }
+
+  /* Glass nav chips for wishlist / friends. */
+  .main-nav a {
+    @apply flex min-h-10 items-center gap-2 rounded-full border border-transparent px-4 text-sm transition-colors;
+  }
+  .main-nav a.current {
+    border-color: rgb(255 255 255 / 32%);
+    background: rgb(255 255 255 / 14%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 28%),
+      0 0 0 1px color-mix(in srgb, var(--ember) 28%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+  .main-nav a.current svg {
+    color: var(--ember);
+  }
+  .mobile-nav {
+    @apply rounded-full border border-white/40 p-1.5 shadow-[0_12px_36px_rgb(12_24_36_/_16%)];
+    background:
+      linear-gradient(
+        165deg,
+        rgb(255 255 255 / 58%) 0%,
+        rgb(255 255 255 / 28%) 100%
+      );
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+    backdrop-filter: blur(18px) saturate(1.15);
+  }
+  :root[data-theme='dark'] .mobile-nav {
+    border-color: rgb(255 255 255 / 12%);
+    background:
+      linear-gradient(
+        165deg,
+        rgb(255 255 255 / 12%) 0%,
+        rgb(16 22 30 / 62%) 100%
+      );
+  }
+  .mobile-nav a {
+    @apply flex min-h-12 min-w-28 items-center justify-center gap-2 rounded-full px-4 text-xs transition-colors;
+  }
+  .mobile-nav a.current {
+    background: color-mix(in srgb, var(--ember) 18%, rgb(255 255 255 / 35%));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 45%);
+    color: var(--ink);
+  }
+  .mobile-nav a.current svg {
+    color: var(--ember);
+  }
+  :root[data-theme='dark'] .mobile-nav a.current {
+    background: color-mix(in srgb, var(--ember) 22%, rgb(255 255 255 / 10%));
+    color: #fff;
+  }
+
   .visually-hidden {
     @apply sr-only;
   }
@@ -70,6 +130,6 @@
     @apply animate-spin motion-reduce:animate-none;
   }
   .list-note {
-    @apply mb-5 flex items-center gap-2 rounded bg-forest/5 p-3 text-xs text-muted;
+    @apply mb-5 flex items-center gap-2 rounded-lg bg-forest/5 p-3 text-sm text-muted;
   }
 }

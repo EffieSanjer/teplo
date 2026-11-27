@@ -1,30 +1,32 @@
 /* Login and welcome-screen cards. */
 @layer components {
-  .login-page {
-    @apply mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-6;
-  }
   .login-theme {
-    @apply fixed right-4 top-4;
+    @apply fixed right-4 top-4 z-20;
+  }
+  .login-theme .settings-control,
+  .login-theme .theme-control {
+    @apply border-white/30 bg-white/15 text-white hover:bg-white/22;
   }
   .login-brand {
-    @apply text-[40px];
+    @apply text-[42px];
   }
   .brand-icon {
-    @apply mr-3 grid size-12 place-items-center rounded bg-forest text-paper;
+    @apply mr-3 grid size-12 place-items-center rounded bg-forest text-on-accent;
   }
   .login-card {
-    @apply grid gap-5 rounded-lg border border-line bg-surface p-6 dark:bg-[#2b362e];
+    @apply grid gap-5;
   }
   .login-art {
     @apply flex items-center gap-4 text-forest;
   }
-  .login-card h1 {
-    @apply font-editorial text-3xl;
+  .login-card h1,
+  .login-card h2 {
+    @apply font-editorial;
   }
-  .login-card > p {
-    @apply text-sm leading-relaxed text-muted;
+  .login-card .welcome-card-body > p {
+    @apply text-sm leading-relaxed;
   }
   .login-disclaimer {
-    @apply flex items-center gap-2 text-xs text-muted;
+    @apply flex items-center gap-2 text-xs;
   }
 }

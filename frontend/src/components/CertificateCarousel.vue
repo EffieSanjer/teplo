@@ -24,7 +24,18 @@ function updateReveal() {
 }
 
 function logo(item: Item) {
-  return certificateIcon(item) || (item.image_id ? imageUrl(item.image_id) : '');
+  return certificateIcon(item) || (item.image_id ? imageUrl(item.image_id, 400) : '');
+}
+function monogram(item: Item) {
+  const words = itemTitle(item).replace(/[^\p{L}\p{N}\s]/gu, ' ').trim().split(/\s+/).filter(Boolean);
+  return Array.from(words.join('') || '?').slice(0, 2).join('').toLocaleUpperCase('ru');
+}
+function fallbackStyle(item: Item) {
+  const key = item.url || item.id;
+  const hash = Array.from(key).reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 0);
+  const palettes = [ ['#426951', '#a5b87a'], ['#526e73', '#a3b8ad'], ['#77684b', '#c4b586'], ['#655c76', '#a7a48e'] ];
+  const colors = palettes[hash % palettes.length]!;
+  return { background: `linear-gradient(145deg, ${colors[0]}, ${colors[1]})` };
 }
 function failLogo(src: string) {
   failedLogos.value = new Set([...failedLogos.value, src]);
@@ -50,6 +61,7 @@ function open(item: Item, event: MouseEvent) {
     <div
       ref="rail"
       class="certificate-carousel-track"
+      tabindex="0"
       @scroll.passive="updateReveal"
       @keydown.right.prevent="navigate(true)"
       @keydown.left.prevent="navigate(false)"
@@ -57,18 +69,18 @@ function open(item: Item, event: MouseEvent) {
       <AppButton
         variant="custom"
         class="certificate-carousel-cover"
-        label="Посмотреть магазины сертификатов"
+        label="Посмотреть сертификаты"
         @click="navigate(true)"
       >
         <span class="certificate-emblem" aria-hidden="true"><Store :size="21" :stroke-width="1.5" /></span>
         <span class="certificate-copy">
           <h2>Сертификаты</h2>
-          <span>Любимые магазины — подарок на ваш вкус</span>
+          <span>На впечатления и подарки</span>
         </span>
         <ArrowRight class="certificate-arrow" :size="19" aria-hidden="true" />
       </AppButton>
 
-      <div ref="stores" class="certificate-stores" :class="{ 'is-visible': storesVisible }" role="group" aria-label="Магазины сертификатов">
+      <div ref="stores" class="certificate-stores" :class="{ 'is-visible': storesVisible }" role="group" aria-label="Сертификаты">
         <AppButton variant="custom" class="certificate-back" label="Назад к сертификатам" @click="navigate(false)">
           <ArrowLeft :size="17" />
         </AppButton>
@@ -88,21 +100,22 @@ function open(item: Item, event: MouseEvent) {
               :src="logo(item)"
               alt=""
               loading="lazy"
+              decoding="async"
               @error="failLogo(logo(item))"
             />
-            <Store v-else :size="26" :stroke-width="1.5" aria-hidden="true" />
+            <span v-else class="certificate-monogram" :style="fallbackStyle(item)" aria-hidden="true">{{ monogram(item) }}</span>
           </AppButton>
           <AppButton
             v-if="canAdd"
             variant="custom"
             class="certificate-shop certificate-carousel-add"
             :style="{ '--order': Math.min(items.length, 6) }"
-            label="Добавить магазин"
-            title="Добавить магазин"
+            label="Добавить сертификат"
+            title="Добавить сертификат"
             @click="emit('add')"
           ><Plus :size="24" :stroke-width="1.5" /></AppButton>
         </div>
-        <p v-if="!items.length && !canAdd" class="certificate-empty">Магазины пока не добавлены</p>
+        <p v-if="!items.length && !canAdd" class="certificate-empty">Сертификаты пока не добавлены</p>
       </div>
     </div>
   </section>
@@ -110,18 +123,36 @@ function open(item: Item, event: MouseEvent) {
 
 <style scoped>
 .certificate-carousel {
-  margin: 20px 0;
+  margin: 8px 0 20px;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 20%);
-  border-radius: 24px;
-  background: linear-gradient(110deg, #28553f 0%, #648c4a 32%, #b7a85f 65%, #45816a 100%);
-  color: #faf7ee;
-  box-shadow: inset 0 0 16px rgb(255 255 255 / 8%), 0 8px 0 -5px rgb(114 121 107 / 15%);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  border-radius: 28px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--accent) 22%, var(--surface)) 0%,
+      color-mix(in srgb, var(--ember) 10%, var(--surface)) 48%,
+      color-mix(in srgb, var(--accent) 14%, var(--surface)) 100%
+    );
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgb(12 24 36 / 8%);
+}
+:root[data-theme='dark'] .certificate-carousel {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--accent) 24%, var(--surface)) 0%,
+      color-mix(in srgb, var(--ember) 12%, var(--surface)) 50%,
+      color-mix(in srgb, var(--accent) 16%, var(--surface)) 100%
+    );
+  box-shadow: 0 10px 28px rgb(0 0 0 / 22%);
 }
 .certificate-carousel-track {
   display: flex;
   align-items: stretch;
   overflow-x: auto;
+  overflow-y: hidden;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
@@ -133,10 +164,10 @@ function open(item: Item, event: MouseEvent) {
   display: flex;
   flex: 0 0 100%;
   min-width: 0;
-  min-height: 96px;
+  min-height: 92px;
   align-items: center;
   gap: 14px;
-  padding: 18px 20px;
+  padding: 16px 18px;
   scroll-snap-align: start;
 }
 .certificate-carousel-cover { text-align: left; color: inherit; }
@@ -146,14 +177,25 @@ function open(item: Item, event: MouseEvent) {
   height: 42px;
   flex-shrink: 0;
   place-items: center;
-  border: 1px solid rgb(255 255 255 / 15%);
+  border: 1px solid color-mix(in srgb, var(--ember) 28%, var(--line));
   border-radius: 14px;
-  background: rgb(255 255 255 / 8%);
+  background: color-mix(in srgb, var(--ember) 14%, var(--surface));
+  color: var(--ember);
 }
 .certificate-copy { flex: 1; min-width: 0; }
-.certificate-copy h2 { margin: 0; font: 400 22px / 1.2 var(--font-editorial); }
-.certificate-copy > span { display: block; margin-top: 5px; font-size: 12px; line-height: 1.4; opacity: .8; }
-.certificate-arrow { flex-shrink: 0; opacity: .8; }
+.certificate-copy h2 {
+  margin: 0;
+  font: 600 18px / 1.2 var(--font-sans);
+  letter-spacing: -0.02em;
+}
+.certificate-copy > span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.certificate-arrow { flex-shrink: 0; color: var(--muted); }
 .certificate-stores { flex-basis: auto; min-width: 100%; }
 .certificate-back {
   display: grid;
@@ -167,18 +209,22 @@ function open(item: Item, event: MouseEvent) {
 .certificate-shop {
   position: relative;
   display: grid;
-  flex: 0 0 62px;
-  width: 62px;
-  height: 62px;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
   place-items: center;
   padding: 2px;
-  border: 1px solid rgb(255 255 255 / 25%);
+  border: 1px solid rgb(255 255 255 / 50%);
   border-radius: 16px;
-  background: rgb(255 255 255 / 15%);
+  background: rgb(255 255 255 / 42%);
   color: inherit;
   opacity: 0;
   transform: translate(34px, 22px) rotate(-12deg) scale(.9);
   transition: transform 480ms cubic-bezier(.22, 1, .36, 1), opacity 260ms ease;
+}
+:root[data-theme='dark'] .certificate-shop {
+  border-color: rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 8%);
 }
 .certificate-stores.is-visible .certificate-shop {
   opacity: 1;
@@ -186,16 +232,32 @@ function open(item: Item, event: MouseEvent) {
   transition-delay: calc(var(--order, 0) * 70ms);
 }
 .certificate-shop + .certificate-shop { margin-left: -8px; }
-.certificate-shop img { width: 56px; height: 56px; border-radius: 13px; object-fit: contain; background: #fff; }
+.certificate-shop img {
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
+  object-fit: contain;
+  background: #fff;
+}
+.certificate-monogram {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 13px;
+  color: #fff;
+  font: italic 500 22px / 1 var(--font-editorial);
+  text-shadow: 0 1px 4px rgb(0 0 0 / 15%);
+}
 .certificate-shop:focus-visible { z-index: 1; }
-.certificate-carousel-add { background: rgb(255 255 255 / 12%); }
-.certificate-empty { margin: 0; font-size: 12px; opacity: .8; }
+.certificate-carousel-add { background: rgb(255 255 255 / 28%); color: var(--accent); }
+.certificate-empty { margin: 0; font-size: 12px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) {
   .certificate-stores .certificate-shop { opacity: 1; transform: rotate(5deg); transition: none; }
 }
-button:focus-visible { outline: 2px solid #faf7ee; outline-offset: 3px; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 @media (hover: hover) {
   .certificate-back:hover,
-  .certificate-carousel-add:hover { background: rgb(255 255 255 / 24%); }
+  .certificate-carousel-add:hover { background: rgb(255 255 255 / 48%); }
 }
 </style>

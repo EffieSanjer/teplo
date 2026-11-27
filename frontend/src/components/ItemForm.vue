@@ -17,6 +17,7 @@ import {
   Link,
   Pencil,
   Sparkles,
+  Ticket,
   Trash2,
   X,
 } from 'lucide-vue-next';
@@ -43,9 +44,13 @@ const props = defineProps<{
   seed?: SharedDetails;
 }>();
 const emit = defineEmits<{ close: []; saved: [] }>();
-const fieldSections = computed(() => form.item_type === 'gift' ? ['source', 'identity'] : ['identity', 'source']);
+const fieldSections = computed(() =>
+  form.item_type === 'gift' || form.item_type === 'ticket'
+    ? ['source', 'identity']
+    : ['identity', 'source'],
+);
 const form = reactive({
-  item_type: props.item?.item_type || props.initialType || ('idea' as ItemInput['item_type']),
+  item_type: props.item?.item_type || props.initialType || ('gift' as ItemInput['item_type']),
   title: props.item?.title || props.seed?.title || '',
   description: props.item?.description || '',
   url: props.item?.url || props.seed?.url || '',
@@ -60,7 +65,13 @@ const saving = ref(false),
   fetching = ref(false),
   uploading = ref(false);
 const mostWanted = ref(props.item?.most_wanted || false);
-const sourcePlaceholder = 'https://магазин.ru/тот-самый-подарок';
+const sourcePlaceholder = computed(() =>
+  form.item_type === 'ticket'
+    ? 'https://афиша…/событие'
+    : form.item_type === 'certificate'
+      ? 'https://пример.ru/сертификат'
+      : 'https://пример.ru/тот-самый-подарок',
+);
 const sourceError = ref(''),
   sourceHint = ref(''),
   photoError = ref(''),
@@ -88,10 +99,12 @@ const formTitle = computed(() =>
   props.item
     ? 'Редактировать желание'
     : form.item_type === 'certificate'
-      ? 'Магазин для сертификата'
-      : props.listType === 'surprise'
-        ? 'Маленький сюрприз'
-        : 'Новое желание',
+      ? 'Сертификат'
+      : form.item_type === 'ticket'
+        ? 'Билет на событие'
+        : props.listType === 'surprise'
+          ? 'Маленький сюрприз'
+          : 'Новое желание',
 );
 
 function resizeNote() {
@@ -463,7 +476,7 @@ async function save() {
       };
       const existing = await api<Item[]>(`/users/${props.recipientId}/items/${props.listType}`);
       if (existing.some((item) => item.id !== props.item?.id && !item.archived_at && item.item_type === 'certificate' && storeHost(item.url || '') === storeHost(form.url.trim()))) {
-        sourceError.value = 'Этот магазин уже добавлен в список';
+        sourceError.value = 'Этот сертификат уже добавлен в список';
         return;
       }
     }
@@ -545,7 +558,7 @@ async function save() {
         >
           <WishImage
             v-if="form.image_id"
-            :src="imageUrl(form.image_id)"
+            :src="imageUrl(form.image_id, 800)"
             :is-icon="form.image_id === iconImageId"
             alt="Фотография подарка"
           /><AppButton
@@ -650,19 +663,19 @@ async function save() {
           </div>
         </div>
       </section>
-      <section v-if="form.item_type === 'certificate'" class="certificate-store-panel" aria-label="Популярные магазины">
+      <section v-if="form.item_type === 'certificate'" class="certificate-store-panel" aria-label="Популярные сертификаты">
         <div class="certificate-store-intro">
           <WishImage
             v-if="form.image_id && !certificateStore(form.url)"
-            :src="imageUrl(form.image_id)"
+            :src="imageUrl(form.image_id, 800)"
             :is-icon="true"
-            alt="Иконка магазина"
+            alt="Иконка сертификата"
             class="mx-auto mb-4 size-16 rounded-2xl object-contain"
           />
           <h3>{{ customStoreTitle || 'Подарок на ваш вкус' }}</h3>
-          <p v-if="!customStoreTitle">Выберите любимый магазин или добавьте свой по ссылке</p>
+          <p v-if="!customStoreTitle">Выберите вариант или добавьте свой по ссылке</p>
         </div>
-        <div class="certificate-store-carousel" role="group" aria-label="Выбрать магазин">
+        <div class="certificate-store-carousel" role="group" aria-label="Выбрать сертификат">
           <AppButton
             v-for="store in certificateStores"
             :key="store.host"
@@ -692,14 +705,23 @@ async function save() {
           :pressed="form.item_type === 'gift'"
           @click="form.item_type = 'gift'"
         >
-          <Gift :size="18" /><span>По ссылке</span>
+          <Gift :size="18" /><span>Подарок</span></AppButton
+        ><AppButton
+          variant="custom"
+          :class="{ selected: form.item_type === 'ticket' }"
+          :pressed="form.item_type === 'ticket'"
+          @click="form.item_type = 'ticket'"
+        >
+          <Ticket :size="18" /><span>Билет</span>
         </AppButton>
       </div>
       <p v-if="form.item_type !== 'certificate'" class="form-intro">
         {{
           form.item_type === 'idea'
             ? 'Запишите пожелание или подсказку — конкретную вещь выбирать не обязательно.'
-            : 'Сохраните конкретную вещь или пост. По ссылке попробуем найти название и фото.'
+            : form.item_type === 'ticket'
+              ? 'Сохраните билет на концерт, спектакль или другое событие. По ссылке попробуем найти название и афишу.'
+              : 'Сохраните конкретную вещь или пост. По ссылке попробуем найти название и фото.'
         }}
         <span v-if="listType === 'surprise'"> Получатель сюрприз не увидит.</span>
       </p>
@@ -709,7 +731,6 @@ async function save() {
           <AppButton variant="custom" :pressed="form.surprise_visibility === 'friends'" :disabled="saving" @click="setVisibility('friends')">Всем друзьям</AppButton>
           <AppButton variant="custom" :pressed="form.surprise_visibility === 'private'" :disabled="saving" @click="setVisibility('private')">Только мне</AppButton>
         </div>
-        <p class="description-hint">Получатель не увидит сюрприз при любом выборе.</p>
       </fieldset>
       <div
         class="wish-editor-layout"
@@ -728,9 +749,11 @@ async function save() {
               <FormField
                 :model-value="form.title"
                 :placeholder="
-                  form.item_type === 'gift'
-                    ? 'Например, керамическая чашка'
-                    : 'Например, что-нибудь для рисования'
+                  form.item_type === 'ticket'
+                    ? 'Например, концерт или спектакль'
+                    : form.item_type === 'gift'
+                      ? 'Например, керамическая чашка'
+                      : 'Например, что-нибудь для рисования'
                 "
                 @update:model-value="form.title = $event"
                 :required="form.item_type === 'idea'"
@@ -768,7 +791,7 @@ async function save() {
                 :hint="
                   sourceHint ||
                   (form.item_type === 'certificate'
-                    ? 'Ссылка на сайт магазина.'
+                    ? 'Ссылка на сертификат или впечатление.'
                     : form.url.trim() ? '' : 'Вставьте из «Поделиться», можно вместе с текстом.')
                 "
                 :message-role="sourceError ? 'alert' : sourceHint ? 'status' : 'none'"
@@ -788,7 +811,7 @@ async function save() {
                 @blur="onSourceBlur"
               >
                 <template #label
-                  >{{ form.item_type === 'certificate' ? 'Ссылка на магазин' : 'Ссылка' }}
+                  >Ссылка
                   <span v-if="form.item_type !== 'idea'">*</span></template
                 >
                 <template #clear-icon><X :size="15" /></template>
@@ -807,7 +830,9 @@ async function save() {
                     ? 'Ищем подробности…'
                     : form.item_type === 'certificate'
                       ? 'Обновить иконку и название'
-                      : 'Подтянуть название, цену и фото'
+                      : form.item_type === 'ticket'
+                        ? 'Подтянуть название и афишу'
+                        : 'Подтянуть название, цену и фото'
                 }}
               </AppButton>
             </section>
@@ -891,8 +916,10 @@ async function save() {
               : item
                 ? 'Сохранить изменения'
                 : draft.item_type === 'certificate'
-                  ? 'Добавить магазин'
-                  : 'Добавить желание'
+                  ? 'Добавить сертификат'
+                  : draft.item_type === 'ticket'
+                    ? 'Добавить билет'
+                    : 'Добавить желание'
           }}
         </AppButton>
       </FormActions>

@@ -1,0 +1,9 @@
+.avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--color-sand, #d9c8a6);
+  color: var(--color-forest, #2f5478);
+}

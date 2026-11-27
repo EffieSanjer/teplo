@@ -3,23 +3,51 @@
     font-family: var(--font-sans);
     font-size: 14px;
     color-scheme: light;
-    --paper: #f3f0e9;
-    --surface: #faf8f2;
-    --ink: #293d32;
-    --muted: #72796b;
-    --accent: #354f40;
-    --on-accent: #faf7ee;
-    --line: #d7d4c9;
-    --focus-ring: #667c5526;
+    --paper: #f3f6f8;
+    --surface: #ffffff;
+    --ink: #1a2b3a;
+    --muted: #6b7f90;
+    --accent: #3a7a8c;
+    --on-accent: #f4fafb;
+    --line: #d5e0e8;
+    --focus-ring: #3a7a8c26;
+    --warm: #d4844a;
+    --ember: #d4844a;
+    --board: #2f6878;
+    --board-muted: #b8d4dc;
+    --collection-canvas: color-mix(in srgb, var(--ink) 4%, var(--paper));
+    --collection-tone-0: #4a8a9a;
+    --collection-tone-1: #6a9aab;
+    --collection-tone-2: #3a6a7a;
+    --collection-tone-3: #5a8898;
+    --collection-sheen-0: #9ec8d4;
+    --collection-sheen-1: #b8d8e2;
+    --collection-sheen-2: #a8c8d4;
+    --collection-sheen-3: #a4c0cc;
+    --modal-backdrop: rgb(18 40 58 / 55%);
+    --wishlist-cover: url('/wishlist-cover-light.jpg');
   }
 
   :root[data-theme='dark'] {
     color-scheme: dark;
-    --paper: #202823;
-    --surface: #2b362e;
-    --ink: #ede9df;
-    --muted: #b3bcad;
-    --line: #475349;
+    --paper: #121c26;
+    --surface: #1a2733;
+    --ink: #eef3f8;
+    --muted: #b4c5d4;
+    --accent: #5a9aab;
+    --on-accent: #071218;
+    --line: #3a4f63;
+    --focus-ring: #5a9aab33;
+    --board: #2a5564;
+    --board-muted: #9ec4d0;
+    --collection-canvas: color-mix(in srgb, #000 18%, var(--paper));
+    --modal-backdrop: rgb(8 14 22 / 68%);
+    --wishlist-cover: url('/wishlist-cover-dark.jpg');
+  }
+
+  html,
+  body {
+    overscroll-behavior: none;
   }
 
   body {
@@ -47,14 +75,14 @@
   button:focus-visible,
   a:focus-visible,
   summary:focus-visible {
-    outline: 2px solid #927858;
+    outline: 2px solid #6a93b8;
     outline-offset: 3px;
   }
 
   input,
   textarea,
   select {
-    @apply w-full rounded border border-line bg-surface px-3 py-3 text-base text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15 dark:border-[#475349] dark:bg-[#202823] dark:text-[#ede9df];
+    @apply w-full rounded border border-line bg-surface px-3 py-3 text-base text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15 dark:border-[#3a4f63] dark:bg-paper dark:text-ink;
   }
 
   textarea {

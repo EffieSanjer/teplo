@@ -214,14 +214,29 @@ onBeforeUnmount(() => {
 <template>
   <div class="page friends-page pb-28">
     <section class="friends-hero" aria-label="Друзья">
-      <div class="friends-hero-image" aria-hidden="true" />
+      <img
+        class="friends-hero-image"
+        alt=""
+        width="1280"
+        height="720"
+        decoding="async"
+        fetchpriority="high"
+        sizes="100vw"
+        src="/friends-hero-mobile.jpg"
+        srcset="/friends-hero-mobile.jpg 768w, /friends-hero.jpg 1280w"
+      />
       <div class="friends-hero-shade" aria-hidden="true" />
       <div class="friends-hero-content">
         <div class="friends-hero-copy">
-          <h1 class="friends-hero-title">Друзья</h1>
-          <p class="friends-hero-lead">
-            Люди, с которыми хочется делиться желаниями — без общей группы, просто по дружбе.
-          </p>
+          <h1 class="friends-hero-title">
+            Друзья
+            <span
+              v-if="!loading && !error"
+              class="friends-hero-count"
+              role="status"
+            >{{ users.length }}</span>
+          </h1>
+          <p class="friends-hero-lead">Делитесь желаниями без общей группы.</p>
         </div>
         <div class="friends-hero-actions">
           <AppButton
@@ -238,15 +253,7 @@ onBeforeUnmount(() => {
     </section>
     <div class="friends-layout">
       <section class="friends-directory" aria-label="Список друзей" :aria-busy="loading">
-        <header class="circle-directory-heading">
-          <div class="circle-directory-title">
-            <h2>Ваш круг</h2>
-            <span v-if="!loading && !error" class="directory-count" role="status">
-              {{ users.length }}
-            </span>
-          </div>
-        </header>
-        <div v-if="users.length || query" class="friends-toolbar">
+        <div class="friends-toolbar">
           <FormField
             v-model="query"
             class="search-input"
@@ -280,11 +287,7 @@ onBeforeUnmount(() => {
         <EmptyState
           v-else-if="!filtered.length"
           :title="query ? 'Никого не нашли' : 'Пока только вы'"
-          :description="
-            query
-              ? 'Попробуйте другое имя.'
-              : 'Пригласите друга по ссылке. После подтверждения вы сможете видеть вишлисты друг друга — общая группа не нужна.'
-          "
+          :description="query ? 'Попробуйте другое имя.' : 'Пригласите друга по ссылке.'"
           :icon="Users"
           :icon-size="36"
           :icon-width="1.3"
@@ -313,16 +316,14 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
-    <Modal v-if="inviting" title="Пригласить друга" @close="!busy && (inviting = false)">
-      <div class="confirm-body">
-        <p>
-          Отправьте ссылку тому, с кем хотите делиться желаниями. После подтверждения вы оба
-          получите доступ к вишлистам и фотографиям друг друга.
-        </p>
-        <FieldMessage class="inline-hint">
-          Ссылка для одного друга, действует 7 дней и перестаёт работать после добавления в друзья.
-          Ранее отправленные ссылки остаются действительными. Отправляйте их только лично.
-        </FieldMessage>
+    <Modal
+      v-if="inviting"
+      class="invite-modal"
+      title="Пригласить друга"
+      @close="!busy && (inviting = false)"
+    >
+      <div class="invite-modal-body">
+        <p class="invite-modal-lead">Отправьте личную ссылку другу. Действует 7 дней.</p>
         <LoadingLabel
           v-if="busy"
           :label="invitation ? 'Отзываем приглашение…' : 'Готовим приглашение…'"
@@ -360,23 +361,23 @@ onBeforeUnmount(() => {
         </AppButton>
       </div>
     </Modal>
-    <Modal v-if="token" title="Приглашение в друзья" @close="!busy && closePreview()">
-      <div class="confirm-body">
+    <Modal
+      v-if="token"
+      class="invite-modal"
+      title="Приглашение в друзья"
+      @close="!busy && closePreview()"
+    >
+      <div class="invite-modal-body">
         <LoadingLabel v-if="previewLoading" label="Проверяем приглашение…" role="status" />
-        <template v-if="preview"
-          ><h3>{{ preview.inviter.display_name }}</h3>
-          <p>
+        <template v-if="preview">
+          <h3 class="invite-modal-name">{{ preview.inviter.display_name }}</h3>
+          <p class="invite-modal-lead">
             {{
               preview.own
                 ? 'Это ваше приглашение — отправьте ссылку другу.'
-                : 'Предлагает делиться желаниями. После подтверждения вы сможете смотреть вишлисты и фотографии друг друга.'
+                : 'После подтверждения откроются вишлисты друг друга.'
             }}
           </p>
-          <FieldMessage class="inline-hint">
-            Вы также сможете добавлять сюрпризы для друга. Этот список видят его подтверждённые
-            друзья, но не он сам. Сюрпризы для вас останутся скрыты, групповые списки не
-            открываются. Дружбу можно прекратить в любой момент.
-          </FieldMessage>
           <AppButton
             v-if="!preview.own"
             variant="primary"
