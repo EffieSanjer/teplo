@@ -1,0 +1,90 @@
+# Local frontend/dev stack: no tunnel, no Telegram login, no production .env.
+# Frontend sources are mounted, so Vite picks up edits without an image rebuild.
+name: friends-wishlist-dev
+
+x-backend: &backend
+  build:
+    context: ./backend
+    dockerfile: ../infra/docker/backend.Dockerfile
+  environment:
+    APP_ENV: development
+    PUBLIC_BASE_URL: http://localhost:3000
+    DATABASE_URL: postgresql+psycopg://wishlist:local-wishlist-password@db/wishlist
+    SESSION_SECRET: local-dev-session-secret-at-least-32-characters
+    DEV_LOGIN_ENABLED: "true"
+    DEV_USER_ID: ${DEV_USER_ID:-11111111-1111-4111-8111-111111111111}
+    TELEGRAM_MODE: disabled
+    TELEGRAM_ALLOW_PRIVATE_LOGIN: "true"
+    MEDIA_ROOT: /data/media
+  volumes:
+    - media:/data/media
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: wishlist
+      POSTGRES_USER: wishlist
+      POSTGRES_PASSWORD: local-wishlist-password
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "wishlist" -d "wishlist"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: [alembic, upgrade, head]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    command: [uvicorn, src.main:app, --host, 0.0.0.0, --port, "8000", --no-access-log]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import os,urllib.request; from urllib.parse import urlsplit; r=urllib.request.Request('http://127.0.0.1:8000/api/v1/health',headers={'Host':urlsplit(os.environ.get('PUBLIC_BASE_URL','http://localhost:3000')).netloc}); urllib.request.urlopen(r,timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  web-dev:
+    build:
+      context: .
+      dockerfile: infra/docker/web-dev.Dockerfile
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    environment:
+      API_PROXY_TARGET: http://api:8000
+      # The API validates Host/Origin against PUBLIC_BASE_URL. Vite rewrites
+      # both to this origin even though the browser is on localhost:5173.
+      PUBLIC_ORIGIN: http://localhost:3000
+      # Docker Desktop needs polling for bind-mount HMR on Windows.
+      # Generated files are excluded in vite.config.ts to avoid extra reloads.
+      VITE_WATCH_POLLING: "true"
+    volumes:
+      - ./frontend:/web
+      # Container dependencies survive; Windows node_modules stay out of Linux.
+      - /web/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q --spider http://127.0.0.1:5173/']
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres:
+  media:
