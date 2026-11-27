@@ -42,6 +42,51 @@ export type SharedDetails = {
   price?: string
   currency?: string
   price_mode?: 'from'
+  image_id?: string
+}
+
+export function wishSeedFromQuery(query: {
+  url?: unknown
+  title?: unknown
+  price?: unknown
+  currency?: unknown
+  image_id?: unknown
+}): SharedDetails | null {
+  const url = typeof query.url === 'string' ? query.url : ''
+  if (!safeHttpUrl(url)) return null
+  const result: SharedDetails = { url }
+  const title = typeof query.title === 'string' ? query.title.trim() : ''
+  if (title) result.title = [...title].slice(0, 200).join('')
+  const price = typeof query.price === 'string' ? query.price : ''
+  const currency = typeof query.currency === 'string' ? query.currency : ''
+  if (/^\d{1,12}(\.\d{1,2})?$/.test(price) && /^[A-Z]{3}$/.test(currency)) {
+    result.price = price
+    result.currency = currency
+  }
+  const imageId = typeof query.image_id === 'string' ? query.image_id : ''
+  if (
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      imageId,
+    )
+  ) {
+    result.image_id = imageId
+  }
+  return result
+}
+
+function safeHttpUrl(value: string) {
+  if (!value || value.length > 2048 || /[\s\\]/.test(value)) return false
+  try {
+    const url = new URL(value)
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      !!url.hostname &&
+      !url.username &&
+      !url.password
+    )
+  } catch {
+    return false
+  }
 }
 
 export function extractSharedDetails(text: string): SharedDetails | null {

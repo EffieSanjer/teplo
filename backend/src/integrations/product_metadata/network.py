@@ -14,6 +14,27 @@ class FetchError(ValueError):
     pass
 
 
+# Clash/Surge/V2Ray fake-ip and similar local DNS proxies map public hosts into
+# RFC 2544 benchmarking space. It is not a LAN/loopback range, so fetching still
+# goes through the proxy rather than to localhost or cloud metadata.
+_FAKE_IP = ipaddress.ip_network("198.18.0.0/15")
+
+
+def _blocked_address(address: str) -> bool:
+    ip = ipaddress.ip_address(address)
+    if address == "168.63.129.16":  # Azure infrastructure virtual IP.
+        return True
+    if ip.is_multicast or ip.is_unspecified:
+        return True
+    if isinstance(ip, ipaddress.IPv6Address) and (
+        ip.ipv4_mapped is not None or ip.sixtofour is not None or ip.teredo is not None
+    ):
+        return True
+    if ip in _FAKE_IP:
+        return False
+    return not ip.is_global
+
+
 def public_addresses(hostname: str, port: int) -> list[str]:
     try:
         results = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
@@ -23,16 +44,8 @@ def public_addresses(hostname: str, port: int) -> list[str]:
     if not addresses:
         raise FetchError("Адрес сайта не найден")
     for address in addresses:
-        ip = ipaddress.ip_address(address)
         # Mapped IPv6 and transition ranges can tunnel to unexpected IPv4 endpoints.
-        if (
-            not ip.is_global
-            or address == "168.63.129.16"  # Azure infrastructure virtual IP.
-            or ip.is_multicast
-            or ip.is_unspecified
-            or isinstance(ip, ipaddress.IPv6Address)
-            and (ip.ipv4_mapped is not None or ip.sixtofour is not None or ip.teredo is not None)
-        ):
+        if _blocked_address(address):
             raise FetchError("Недопустимый адрес сайта")
     return addresses
 
@@ -59,6 +72,7 @@ class PinnedConnection(http.client.HTTPConnection):
 
 def fetch_public(url: str, max_bytes: int, timeout: float) -> tuple[bytes, str, str]:
     deadline = time.monotonic() + timeout
+    seen_paths: set[tuple[str, str, str]] = set()
     try:
         for _ in range(4):
             valid_url(url)
@@ -67,6 +81,11 @@ def fetch_public(url: str, max_bytes: int, timeout: float) -> tuple[bytes, str, 
                 raise FetchError("Порт сайта не поддерживается")
             host = parts.hostname.encode("idna").decode("ascii")
             port = parts.port or (443 if parts.scheme == "https" else 80)
+            path_key = (parts.scheme, host, parts.path or "/")
+            # Ozon and similar anti-bot bounces repeat the same path with __rr=N.
+            if path_key in seen_paths:
+                raise FetchError("Сайт запросил проверку безопасности")
+            seen_paths.add(path_key)
             addresses = public_addresses(host, port)
             remaining = deadline - time.monotonic()
             if remaining <= 0:

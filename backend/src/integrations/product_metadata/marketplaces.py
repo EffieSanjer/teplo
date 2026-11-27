@@ -778,8 +778,17 @@ def wildberries_basket(identifier, fetch, max_bytes):
             if not isinstance(card, dict) or str(card.get("nm_id")) != identifier:
                 continue
             title = clean_text(card.get("imt_name"))
-            image = f"{root}/images/big/1.webp"
-            result = {"title": title[:200] if title else None, "image_url": image, "image_urls": [image]}
+            # Prefer webp; keep a JPEG fallback for clients that reject one format.
+            images = [
+                f"{root}/images/big/1.webp",
+                f"{root}/images/big/1.jpg",
+                f"{root}/images/c516x688/1.webp",
+            ]
+            result = {
+                "title": title[:200] if title else None,
+                "image_url": images[0],
+                "image_urls": images,
+            }
             price, currency = wildberries_price(card)
             if price is not None:
                 result.update(price=price, currency=currency)
@@ -875,6 +884,10 @@ def public_product(url, fetch, max_bytes, html=None):
         return lamoda_product(identifier, fetch, max_bytes)
     if site == "megamarket":
         return megamarket_product(identifier, fetch, max_bytes)
+    if site == "yandex":
+        # Yandex Market has no stable unauthenticated catalog API from this stack.
+        # When HTML survived captcha, embedded state is merged by the caller.
+        return {}
     if site == "aliexpress" and html is not None:
         return aliexpress_product(html, url)
     return {}

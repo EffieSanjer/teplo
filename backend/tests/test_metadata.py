@@ -43,6 +43,14 @@ def test_mixed_dns_blocked(monkeypatch):
         public_addresses("example.com", 80)
 
 
+@pytest.mark.parametrize("address", ["198.18.0.1", "198.19.255.10"])
+def test_fake_ip_proxy_range_allowed(monkeypatch, address):
+    monkeypatch.setattr(
+        socket, "getaddrinfo", lambda *a, **kw: [(socket.AF_INET, 1, 6, "", (address, 443))]
+    )
+    assert public_addresses("pin.it", 443) == [address]
+
+
 @pytest.mark.parametrize(
     "url", ["http://localhost:9000", "file:///etc/passwd", "http://user:pass@example.com"]
 )
@@ -140,6 +148,32 @@ def test_redirect_revalidated(monkeypatch):
     with pytest.raises(FetchError):
         fetch_public("https://example.com", 100, 1)
     assert checked == ["example.com", "localhost"]
+
+
+def test_redirect_loop_on_same_path_is_challenge(monkeypatch):
+    class Response:
+        status = 307
+
+        def getheader(self, name):
+            return "https://www.ozon.ru/api/item?__rr=2" if name == "Location" else None
+
+    class Connection:
+        def __init__(self, *args):
+            pass
+
+        def request(self, *args, **kwargs):
+            pass
+
+        def getresponse(self):
+            return Response()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(network, "public_addresses", lambda *a, **k: ["93.184.216.34"])
+    monkeypatch.setattr(network, "PinnedConnection", Connection)
+    with pytest.raises(FetchError, match="проверку безопасности"):
+        fetch_public("https://www.ozon.ru/api/item?__rr=1", 100, 1)
 
 
 def test_metadata_failure_does_not_block_save(client, monkeypatch):

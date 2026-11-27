@@ -76,8 +76,9 @@ async function open(path: string) {
             '<button class="test-item" @click="$emit(\'open\', item)">{{ item.title }}</button>',
         },
         ItemForm: {
-          props: ['recipientId', 'listType'],
-          template: '<div class="test-form">{{ recipientId }}:{{ listType }}</div>',
+          props: ['recipientId', 'listType', 'seed', 'initialType'],
+          template:
+            '<div class="test-form" :data-url="seed?.url" :data-title="seed?.title" :data-price="seed?.price" :data-image="seed?.image_id" :data-type="initialType">{{ recipientId }}:{{ listType }}</div>',
         },
         MasonryGrid: { template: '<div><slot /></div>' },
         Modal: {
@@ -109,6 +110,25 @@ describe('friend surprise lists', () => {
     expect(wrapper!.get('header.board-journal .size-14 span').text()).toBe('Я')
     await wrapper!.get('[aria-label="Добавить желание"]').trigger('click')
     expect(wrapper!.get('.test-form').text()).toBe('me:wishlist')
+  })
+  it('opens a prefilled wish from a bot link and removes the launch query', async () => {
+    vi.mocked(api).mockImplementation(async (path) =>
+      path === '/users/me' ? session.value!.user : [],
+    )
+    const router = await open(
+      '/me?url=' +
+        encodeURIComponent('https://shop.example/item') +
+        '&title=Lamp&price=1200&currency=RUB&image_id=11111111-1111-4111-8111-111111111111',
+    )
+    const form = wrapper!.get('.test-form')
+    expect(form.attributes('data-url')).toBe('https://shop.example/item')
+    expect(form.attributes('data-title')).toBe('Lamp')
+    expect(form.attributes('data-price')).toBe('1200')
+    expect(form.attributes('data-image')).toBe('11111111-1111-4111-8111-111111111111')
+    expect(form.attributes('data-type')).toBe('gift')
+    expect(router.currentRoute.value.query.url).toBeUndefined()
+    expect(router.currentRoute.value.query.title).toBeUndefined()
+    expect(router.currentRoute.value.query.image_id).toBeUndefined()
   })
   it('places certificates in a dedicated carousel without duplicating cards', async () => {
     vi.mocked(api).mockImplementation(async (path) =>

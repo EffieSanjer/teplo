@@ -40,19 +40,22 @@ const props = defineProps<{
   recipientId: string;
   listType: 'wishlist' | 'surprise';
   initialType?: ItemInput['item_type'];
+  seed?: SharedDetails;
 }>();
 const emit = defineEmits<{ close: []; saved: [] }>();
+const fieldSections = computed(() => form.item_type === 'gift' ? ['source', 'identity'] : ['identity', 'source']);
 const form = reactive({
   item_type: props.item?.item_type || props.initialType || ('idea' as ItemInput['item_type']),
-  title: props.item?.title || '',
+  title: props.item?.title || props.seed?.title || '',
   description: props.item?.description || '',
-  url: props.item?.url || '',
-  price: props.item?.price?.toString() || '',
-  currency: props.item?.currency || 'RUB',
-  image_id: props.item?.image_id || (null as string | null),
+  url: props.item?.url || props.seed?.url || '',
+  price: props.item?.price?.toString() || props.seed?.price || '',
+  currency: props.item?.currency || props.seed?.currency || 'RUB',
+  image_id: props.item?.image_id || props.seed?.image_id || (null as string | null),
   price_mode: props.item?.price_mode || ('exact' as 'exact' | 'approximate' | 'from'),
   surprise_visibility: props.item?.surprise_visibility || ('friends' as 'friends' | 'private'),
 });
+const draft = ref(form);
 const saving = ref(false),
   fetching = ref(false),
   uploading = ref(false);
@@ -115,7 +118,15 @@ watch(
 );
 let lastAutoUrl = '';
 let pendingSharedUrl = '';
-let sharedDetails: SharedDetails | null = null;
+let sharedDetails: SharedDetails | null = props.item || !props.seed?.url
+  ? null
+  : {
+      url: props.seed.url,
+      title: props.seed.title,
+      price: props.seed.price,
+      currency: props.seed.currency,
+      image_id: props.seed.image_id,
+    };
 
 // Mobile keyboards and webviews may insert shared text through input, not paste.
 watch(
@@ -264,20 +275,33 @@ function onAreaClick(event: MouseEvent) {
   choosePhoto();
 }
 
+onMounted(() => {
+  if (sharedDetails) autofillLink(true);
+});
+
 function autofillLink(fromShare = false) {
   const url = form.url.trim();
   if (!url || url === lastAutoUrl || fetching.value || uploading.value || saving.value) return;
   try {
     const parsed = new URL(url);
     if (!['https:', 'http:'].includes(parsed.protocol)) return;
+    const host = parsed.hostname.toLowerCase();
     const social = /(^|\.)(instagram\.com|pinterest\.[a-z.]+|pin\.it|t\.me|telegram\.me)$/.test(
-      parsed.hostname,
+      host,
     );
     const avito =
-      ['avito.ru', 'www.avito.ru', 'm.avito.ru'].includes(parsed.hostname) &&
+      ['avito.ru', 'www.avito.ru', 'm.avito.ru'].includes(host) &&
       !parsed.username &&
       !parsed.password;
-    if (!fromShare && form.item_type !== 'certificate' && !social && !avito) return;
+    // Marketplace pages often need an explicit fetch; blur should still try them.
+    const marketplace =
+      /(^|\.)(wildberries\.(ru|by|kz)|wb\.ru|ozon\.ru|lamoda\.ru|market\.yandex\.ru|megamarket\.ru|dns-shop\.ru|mvideo\.ru|citilink\.ru)$/.test(
+        host,
+      ) &&
+      !parsed.username &&
+      !parsed.password;
+    if (!fromShare && form.item_type !== 'certificate' && !social && !avito && !marketplace)
+      return;
     lastAutoUrl = url;
     pendingSharedUrl = '';
     void metadata();
@@ -675,38 +699,25 @@ async function save() {
         {{
           form.item_type === 'idea'
             ? 'Запишите пожелание или подсказку — конкретную вещь выбирать не обязательно.'
-            : form.item_type === 'certificate'
-              ? 'Добавьте любимый магазин — друзья смогут выбрать сертификат сами.'
-              : 'Сохраните конкретную вещь или пост. По ссылке попробуем найти название и фото.'
+            : 'Сохраните конкретную вещь или пост. По ссылке попробуем найти название и фото.'
         }}
         <span v-if="listType === 'surprise'"> Получатель сюрприз не увидит.</span>
       </p>
-      <FormField
-        v-if="listType === 'surprise'"
-        :model-value="form.surprise_visibility"
-        class="mb-5 block"
-        @update:model-value="setVisibility"
-        label="Кто видит сюрприз"
-        as="select"
-        control-class="w-full"
-        hint="Получатель не увидит сюрприз при любом выборе."
-        hint-class="description-hint"
-        message-role="none"
-      >
-        <template #options>
-          <option value="friends">Всем друзьям</option>
-          <option value="private">Только мне</option>
-        </template>
-      </FormField>
+      <fieldset v-if="listType === 'surprise'" class="surprise-visibility mb-5">
+        <legend class="mb-2 text-sm font-medium">Кто видит сюрприз</legend>
+        <div class="visibility-options" role="group" aria-label="Кто видит сюрприз">
+          <AppButton variant="custom" :pressed="form.surprise_visibility === 'friends'" :disabled="saving" @click="setVisibility('friends')">Всем друзьям</AppButton>
+          <AppButton variant="custom" :pressed="form.surprise_visibility === 'private'" :disabled="saving" @click="setVisibility('private')">Только мне</AppButton>
+        </div>
+        <p class="description-hint">Получатель не увидит сюрприз при любом выборе.</p>
+      </fieldset>
       <div
         class="wish-editor-layout"
         :class="{ 'certificate-editor': form.item_type === 'certificate' }"
       >
         <div class="wish-editor-fields">
           <template
-            v-for="section in form.item_type === 'gift'
-              ? ['source', 'identity']
-              : ['identity', 'source']"
+            v-for="section in fieldSections"
             :key="section"
           >
             <section
@@ -723,7 +734,7 @@ async function save() {
                 "
                 @update:model-value="form.title = $event"
                 :required="form.item_type === 'idea'"
-                :maxlength="200"
+                :maxlength="100"
                 clearable
                 clear-label="Очистить название"
                 :focused="focusedField === 'title'"
@@ -758,7 +769,7 @@ async function save() {
                   sourceHint ||
                   (form.item_type === 'certificate'
                     ? 'Ссылка на сайт магазина.'
-                    : 'Вставьте из «Поделиться», можно вместе с текстом.')
+                    : form.url.trim() ? '' : 'Вставьте из «Поделиться», можно вместе с текстом.')
                 "
                 :message-role="sourceError ? 'alert' : sourceHint ? 'status' : 'none'"
                 hint-id="source-link-hint"
@@ -804,7 +815,7 @@ async function save() {
         </div>
         <section class="form-section details-section" aria-label="Дополнительные сведения">
           <AppButton
-            v-if="listType === 'wishlist' && form.item_type !== 'certificate'"
+            v-if="listType === 'wishlist' && draft.item_type !== 'certificate'"
             variant="custom"
             class="most-wanted-toggle"
             :class="{ selected: mostWanted }"
@@ -818,9 +829,9 @@ async function save() {
           <div class="personal-description">
             <FormField
               ref="noteInput"
-              :model-value="form.description"
+              :model-value="draft.description"
               as="textarea"
-              @update:model-value="form.description = $event"
+              @update:model-value="draft.description = $event"
               label="Заметка"
               :rows="2"
               control-class="auto-grow"
@@ -846,11 +857,11 @@ async function save() {
             </FormField>
           </div>
           <PriceField
-            v-if="form.item_type !== 'certificate'"
-            :model-value="form.price"
-            :mode="form.price_mode"
-            @update:model-value="form.price = $event"
-            @update:mode="form.price_mode = $event"
+            v-if="draft.item_type !== 'certificate'"
+            :model-value="draft.price"
+            :mode="draft.price_mode"
+            @update:model-value="draft.price = $event"
+            @update:mode="draft.price_mode = $event"
           />
         </section>
       </div>
@@ -879,7 +890,7 @@ async function save() {
               ? 'Сохраняем…'
               : item
                 ? 'Сохранить изменения'
-                : form.item_type === 'certificate'
+                : draft.item_type === 'certificate'
                   ? 'Добавить магазин'
                   : 'Добавить желание'
           }}

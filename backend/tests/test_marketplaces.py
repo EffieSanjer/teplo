@@ -96,6 +96,8 @@ def test_wb_cdn_requires_matching_article_and_has_bounded_attempts():
     data = wildberries_basket("1126771984", fetch, 10000)
     assert data["title"] == "Cardigan"
     assert data["image_url"] == "https://basket-43.wbbasket.ru/vol11267/part1126771/1126771984/images/big/1.webp"
+    assert data["image_urls"][0].endswith("/images/big/1.webp")
+    assert any(url.endswith("/images/big/1.jpg") for url in data["image_urls"])
     assert len(urls) <= 4
 
     def wrong_product(url, limit):

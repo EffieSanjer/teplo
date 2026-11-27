@@ -59,6 +59,44 @@ describe('ItemForm', () => {
     wrapper.unmount()
   })
 
+  it('keeps a bot preview and still requests page metadata', async () => {
+    vi.mocked(send).mockResolvedValueOnce({
+      title: 'From page',
+      price: '99',
+      currency: 'USD',
+      image_id: 'photo',
+      image_is_icon: false,
+    })
+    const wrapper = mount(ItemForm, {
+      props: {
+        recipientId: '11111111-1111-4111-8111-111111111111',
+        listType: 'wishlist',
+        initialType: 'gift',
+        seed: {
+          url: 'https://example.com/item',
+          title: 'Lamp',
+          price: '1200',
+          currency: 'RUB',
+          image_id: 'seed-photo',
+        },
+      },
+      global: { stubs: { Modal: { template: '<div><slot /></div>' } } },
+    })
+    await flushPromises()
+    expect((wrapper.get('.source-section input[type="url"]').element as HTMLInputElement).value).toBe(
+      'https://example.com/item',
+    )
+    expect((wrapper.get('.identity-section input').element as HTMLInputElement).value).toBe('Lamp')
+    expect((wrapper.get('#item-price').element as HTMLInputElement).value).toBe('1 200')
+    // Keep the bot preview photo; metadata must not replace an already filled image.
+    expect(wrapper.get('.upload-area img').attributes('src')).toBe('/api/v1/media/seed-photo')
+    expect(send).toHaveBeenCalledWith(
+      '/metadata',
+      expect.objectContaining({ url: 'https://example.com/item' }),
+    )
+    wrapper.unmount()
+  })
+
   it('does not insert an icon response into an ordinary item', async () => {
     vi.mocked(send).mockResolvedValueOnce({
       title: 'Product',
@@ -714,6 +752,31 @@ describe('ItemForm', () => {
       await wrapper.get('input[type="url"]').setValue(url)
       await wrapper.get('input[type="url"]').trigger('blur')
       expect(send).not.toHaveBeenCalled()
+      wrapper.unmount()
+    },
+  )
+  it.each(['www.wildberries.ru', 'wb.ru'])(
+    'autofills a Wildberries listing on blur from %s',
+    async (host) => {
+      const url = `https://${host}/catalog/1126771984/detail.aspx`
+      vi.mocked(send).mockResolvedValueOnce({
+        title: 'Кардиган',
+        price: '2500',
+        currency: 'RUB',
+        image_id: 'wb-photo',
+      })
+      const wrapper = form()
+      await wrapper.findAll('.type-switch button')[1].trigger('click')
+      const source = wrapper.get('.source-section input[type="url"]')
+      await source.setValue(url)
+      await source.trigger('blur')
+      await flushPromises()
+      expect(send).toHaveBeenCalledWith('/metadata', { url })
+      expect((wrapper.get('.identity-section input').element as HTMLInputElement).value).toBe(
+        'Кардиган',
+      )
+      expect((wrapper.get('#item-price').element as HTMLInputElement).value).toBe('2 500')
+      expect(wrapper.get('.upload-area img').attributes('src')).toBe('/api/v1/media/wb-photo')
       wrapper.unmount()
     },
   )

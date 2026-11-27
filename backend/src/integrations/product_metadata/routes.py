@@ -29,6 +29,70 @@ router = APIRouter(prefix="/metadata", tags=["metadata"])
 slots = threading.BoundedSemaphore(3)
 
 
+def load_page_draft(page_url: str, settings: Settings, fetch, *, prefer_logo: bool = False):
+    """Fetch and parse a public product page. Images stay as URLs for the caller to store."""
+    html, final_url, failure = b"", page_url, None
+    draft = {}
+    requested_ref = product_ref(page_url)
+    # Marketplace HTML shells are often challenged. Public catalog/CDN endpoints
+    # still return title/photo for WB and similar — try them before the page.
+    if requested_ref and not prefer_logo:
+        draft = public_product(page_url, fetch, settings.metadata_max_bytes) or {}
+        if draft.get("title") and draft.get("image_url"):
+            site = requested_ref[0]
+            draft["title"] = marketplace_title(draft["title"], site)
+            return draft, b"", page_url, None
+    try:
+        if endpoint := session_api_url(page_url):
+            draft = fetch_session(endpoint, fetch, settings.metadata_max_bytes)
+        else:
+            html, content_type, final_url = fetch(preview_url(page_url), settings.metadata_max_bytes)
+            if content_type.split(";")[0].strip().lower() not in {"text/html", "application/xhtml+xml"}:
+                raise FetchError("Ссылка не содержит HTML-страницу")
+            final_ref = product_ref(final_url)
+            if requested_ref and final_ref and requested_ref != final_ref:
+                raise FetchError("Сайт перенаправил на другой товар")
+            reject_marketplace_challenge(html, final_url)
+            reject_yandex_challenge(html, final_url)
+            draft = (parse_avito(html, final_url, page_url) if is_avito(page_url)
+                     else parse_metadata(html, final_url))
+            if not prefer_logo and not is_avito(page_url):
+                merge_product(draft, state_product(html, final_url))
+    except FetchError as exc:
+        failure = exc
+        html = getattr(exc, "body", b"") or b""
+        err_url = getattr(exc, "url", final_url) or final_url
+        if not draft and html and is_avito(page_url):
+            try:
+                draft = parse_avito(html, err_url, page_url)
+                failure = None
+            except FetchError as av_exc:
+                failure = av_exc
+        elif not draft and is_avito(page_url):
+            failure = FetchError(
+                "Авито ограничил доступ или запросил проверку безопасности. "
+                "Ссылку можно сохранить, добавьте название и фото вручную"
+            )
+        if not draft:
+            html = b""
+    # Keep the original product URL for catalog APIs: a captcha redirect must not
+    # erase the article id that public_product needs.
+    catalog_url = page_url if requested_ref else final_url
+    site = site_of(catalog_url) or site_of(final_url)
+    if not prefer_logo and (
+        not draft.get("title") or not draft.get("image_url") or draft.get("price") is None
+    ):
+        merge_product(
+            draft,
+            public_product(catalog_url, fetch, settings.metadata_max_bytes, html=html),
+        )
+    if draft.get("title"):
+        draft["title"] = marketplace_title(draft["title"], site)
+    if failure and draft.get("title"):
+        failure = None  # Partial product data is useful even without a downloadable photo.
+    return draft, html, final_url, failure
+
+
 class MetadataInput(BaseModel):
     url: str = Field(max_length=2048)
     prefer_logo: bool = False
@@ -90,54 +154,11 @@ def metadata(
                 raise FetchError("Сайт не ответил вовремя")
             return fetch_public(url, max_bytes, remaining)
 
-        html, final_url, failure = b"", body.url, None
-        draft = {}
-        requested_ref = product_ref(body.url)
-        try:
-            if endpoint := session_api_url(body.url):
-                draft = fetch_session(endpoint, fetch, settings.metadata_max_bytes)
-            else:
-                html, content_type, final_url = fetch(preview_url(body.url), settings.metadata_max_bytes)
-                if content_type.split(";")[0].strip().lower() not in {"text/html", "application/xhtml+xml"}:
-                    raise FetchError("Ссылка не содержит HTML-страницу")
-                final_ref = product_ref(final_url)
-                if requested_ref and final_ref and requested_ref != final_ref:
-                    raise FetchError("Сайт перенаправил на другой товар")
-                reject_marketplace_challenge(html, final_url)
-                reject_yandex_challenge(html, final_url)
-                draft = (parse_avito(html, final_url, body.url) if is_avito(body.url)
-                         else parse_metadata(html, final_url))
-                if not body.prefer_logo and not is_avito(body.url):
-                    merge_product(draft, state_product(html, final_url))
-        except FetchError as exc:
-            failure = exc
-            html = getattr(exc, "body", b"") or b""
-            err_url = getattr(exc, "url", final_url) or final_url
-            if not draft and html and is_avito(body.url):
-                try:
-                    draft = parse_avito(html, err_url, body.url)
-                    failure = None
-                except FetchError as av_exc:
-                    failure = av_exc
-            elif not draft and is_avito(body.url):
-                failure = FetchError(
-                    "Авито ограничил доступ или запросил проверку безопасности. "
-                    "Ссылку можно сохранить, добавьте название и фото вручную"
-                )
-            if not draft:
-                html = b""
-        site = site_of(final_url)
-        if not body.prefer_logo and (
-            not draft.get("title") or not draft.get("image_url") or draft.get("price") is None
-        ):
-            merge_product(
-                draft,
-                public_product(final_url, fetch, settings.metadata_max_bytes, html=html),
-            )
-        if draft.get("title"):
-            draft["title"] = marketplace_title(draft["title"], site)
-        if failure and draft.get("title"):
-            failure = None  # Partial product data is useful even without a downloadable photo.
+        draft, html, final_url, failure = load_page_draft(
+            body.url, settings, fetch, prefer_logo=body.prefer_logo,
+        )
+        # Prefer the requested product host: captcha redirects are not the shop CDN.
+        site = site_of(body.url) or site_of(final_url)
         image_url = draft.pop("image_url", None)
         image_urls = draft.pop("image_urls", [])
         if image_url and image_url not in image_urls:

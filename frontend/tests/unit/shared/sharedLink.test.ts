@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractSharedDetails, extractSharedLink } from '../../../src/shared/sharedLink'
+import { extractSharedDetails, extractSharedLink, wishSeedFromQuery } from '../../../src/shared/sharedLink'
 
 describe('links copied from share sheets', () => {
   it.each([
@@ -97,5 +97,32 @@ describe('share caption metadata', () => {
       url: 'https://example.com/item',
     })
     expect(extractSharedDetails('Нет ссылки')).toBeNull()
+  })
+  it('reads a bot launch query and drops an incomplete price', () => {
+    expect(
+      wishSeedFromQuery({
+        url: 'https://shop.example/item',
+        title: '  Лампа  ',
+        price: '1200.50',
+        currency: 'RUB',
+        image_id: '11111111-1111-4111-8111-111111111111',
+      }),
+    ).toEqual({
+      url: 'https://shop.example/item',
+      title: 'Лампа',
+      price: '1200.50',
+      currency: 'RUB',
+      image_id: '11111111-1111-4111-8111-111111111111',
+    })
+    expect(wishSeedFromQuery({ url: 'https://shop.example/item', price: '10' })).toEqual({
+      url: 'https://shop.example/item',
+    })
+    expect(
+      wishSeedFromQuery({
+        url: 'https://shop.example/item',
+        image_id: 'not-a-uuid',
+      }),
+    ).toEqual({ url: 'https://shop.example/item' })
+    expect(wishSeedFromQuery({ url: 'javascript:alert(1)', title: 'Lamp' })).toBeNull()
   })
 })

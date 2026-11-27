@@ -7,7 +7,6 @@ import {
   Bookmark,
   ChevronDown,
   Gift,
-  LoaderCircle,
   LockKeyhole,
   Plus,
   RefreshCw,
@@ -30,6 +29,8 @@ import {
   type AvatarPalette,
 } from '../shared/avatarPalette';
 import { theme } from '../shared/theme';
+import { wishSeedFromQuery, type SharedDetails } from '../shared/sharedLink';
+import { AppButton, ConfirmDialog, EmptyState, LoadingLabel, SkeletonGrid } from '../components/ui';
 
 const route = useRoute(),
   router = useRouter();
@@ -44,6 +45,8 @@ const formOpen = ref(false),
   editing = ref<Item>(),
   detail = ref<Item>(),
   deleting = ref<Item>();
+const wishSeed = ref<SharedDetails>();
+let sharedOpening = false;
 const detailOrigin = ref<CardOrigin>();
 function openDetail(item: Item, origin: CardOrigin) {
   detailOrigin.value = origin;
@@ -119,7 +122,7 @@ async function load(quiet = false) {
     loading.value = true;
     items.value = [];
     detail.value = undefined;
-    formOpen.value = false;
+    if (!sharedOpening) formOpen.value = false;
     deleting.value = undefined;
   }
   error.value = '';
@@ -132,6 +135,22 @@ async function load(quiet = false) {
     profile.value = user;
     items.value = data;
     lastRefresh = Date.now();
+    const seed = own.value && type === 'wishlist' ? wishSeedFromQuery(route.query) : null;
+    if (seed) {
+      wishSeed.value = seed;
+      initialType.value = 'gift';
+      editing.value = undefined;
+      detail.value = undefined;
+      formOpen.value = true;
+      sharedOpening = true;
+      const nextQuery = { ...route.query };
+      delete nextQuery.url;
+      delete nextQuery.title;
+      delete nextQuery.price;
+      delete nextQuery.currency;
+      delete nextQuery.image_id;
+      void router.replace({ path: route.path, query: nextQuery });
+    } else if (sharedOpening) sharedOpening = false;
     if (!own.value) {
       const count = (entries: Item[]) =>
         entries.filter((item) => !item.archived_at && item.item_type !== 'certificate').length;
@@ -167,7 +186,12 @@ watch(
   { immediate: true },
 );
 
+function closeForm() {
+  formOpen.value = false;
+  wishSeed.value = undefined;
+}
 function add() {
+  wishSeed.value = undefined;
   initialType.value = 'idea';
   editing.value = undefined;
   formOpen.value = true;
@@ -184,6 +208,7 @@ function edit(item: Item) {
 }
 async function saved() {
   formOpen.value = false;
+  wishSeed.value = undefined;
   notify('Запись сохранена');
   await load(true);
 }
@@ -323,19 +348,20 @@ onBeforeUnmount(() => {
               role="status"
               aria-label="Загрузка списка"
             >
-              <p class="loading-label">
-                <LoaderCircle class="spin" :size="16" aria-hidden="true" />Загрузка…
-              </p>
-              <div class="loading-grid" aria-hidden="true">
-                <div v-for="n in 4" :key="n" class="skeleton" />
-              </div>
+              <LoadingLabel label="Загрузка…" />
+              <SkeletonGrid :count="4" />
             </div>
-            <div v-else-if="error" key="error" class="empty-state">
-              <RefreshCw :size="32" />
-              <h2>Не получилось загрузить список</h2>
-              <p role="alert">{{ error }}</p>
-              <button class="button secondary" @click="load()">Попробовать ещё раз</button>
-            </div>
+            <EmptyState
+              v-else-if="error"
+              key="error"
+              title="Не получилось загрузить список"
+              :description="error"
+              :icon="RefreshCw"
+              :icon-size="32"
+              alert
+            >
+              <AppButton variant="secondary" @click="load()">Попробовать ещё раз</AppButton>
+            </EmptyState>
             <div v-else :key="`${recipientId}-${listType}`" class="list-content">
               <div v-if="!own && listType === 'surprise'" class="list-note">
                 <LockKeyhole :size="16" aria-hidden="true" />
@@ -360,14 +386,15 @@ onBeforeUnmount(() => {
                     }}<span>{{ wishes.length }}</span>
                   </h2>
                 </div>
-                <button
+                <AppButton
                   v-if="(own || listType === 'surprise') && !error"
+                  variant="custom"
                   class="collection-add icon-button"
-                  :aria-label="listType === 'surprise' ? 'Добавить сюрприз' : 'Добавить желание'"
+                  :label="listType === 'surprise' ? 'Добавить сюрприз' : 'Добавить желание'"
                   @click="add"
                 >
                   <Plus :size="20" />
-                </button>
+                </AppButton>
               </div>
               <MasonryGrid v-if="wishes.length" class="collection-grid">
                 <ItemCard
@@ -384,31 +411,31 @@ onBeforeUnmount(() => {
                 @add="addCertificate"
                 @open="openDetail"
               />
-              <div
+              <EmptyState
                 v-if="!wishes.length && !certificates.length"
-                class="empty-state collection-empty"
+                class="collection-empty"
+                title="Здесь скоро появится первое желание"
+                :description="
+                  own
+                    ? 'Сохраните мысль, место, впечатление или вещь, к которой хочется вернуться.'
+                    : listType === 'surprise'
+                      ? 'Добавьте первую находку. Получатель её не увидит.'
+                      : 'Друг ещё не добавил пожелания.'
+                "
+                :icon="Gift"
+                :icon-size="38"
+                :icon-width="1.2"
               >
-                <Gift :size="38" :stroke-width="1.2" />
-                <h2>Здесь скоро появится первое желание</h2>
-                <p>
-                  {{
-                    own
-                      ? 'Сохраните мысль, место, впечатление или вещь, к которой хочется вернуться.'
-                      : listType === 'surprise'
-                        ? 'Добавьте первую находку. Получатель её не увидит.'
-                        : 'Друг ещё не добавил пожелания.'
-                  }}
-                </p>
-                <button v-if="own || listType === 'surprise'" class="button primary" @click="add">
+                <AppButton v-if="own || listType === 'surprise'" variant="primary" @click="add">
                   <Plus :size="17" />Добавить {{ listType === 'surprise' ? 'сюрприз' : 'желание' }}
-                </button>
-              </div>
+                </AppButton>
+              </EmptyState>
               <details v-if="archivedItems.length" class="collection-archive">
-                <summary>
+                <AppButton as="summary" variant="custom">
                   <Archive :size="16" /><span>Архив</span
                   ><span class="count">{{ archivedItems.length }}</span
                   ><ChevronDown :size="16" />
-                </summary>
+                </AppButton>
                 <MasonryGrid class="collection-grid"
                   ><ItemCard
                     v-for="(item, index) in archivedItems"
@@ -427,9 +454,10 @@ onBeforeUnmount(() => {
       v-if="formOpen"
       :item="editing"
       :initial-type="initialType"
+      :seed="wishSeed"
       :recipient-id="recipientId"
       :list-type="listType"
-      @close="formOpen = false"
+      @close="closeForm"
       @saved="saved"
     />
     <ItemDetail
@@ -449,18 +477,16 @@ onBeforeUnmount(() => {
         detail = undefined;
       "
     />
-    <Modal v-if="deleting" title="Удалить желание?" @close="!busy && (deleting = undefined)"
-      ><div class="confirm-body">
-        <p>«{{ itemTitle(deleting) }}» будет удалено навсегда. Это действие нельзя отменить.</p>
-        <p v-if="deleteError" class="inline-error" role="alert">{{ deleteError }}</p>
-        <div class="form-actions">
-          <button class="button secondary" :disabled="busy" @click="deleting = undefined">
-            Оставить</button
-          ><button class="button danger" :disabled="busy" @click="remove">
-            {{ busy ? 'Удаляем…' : 'Удалить навсегда' }}
-          </button>
-        </div>
-      </div></Modal
-    >
+    <ConfirmDialog
+      v-if="deleting"
+      title="Удалить желание?"
+      :description="`«${itemTitle(deleting)}» будет удалено навсегда. Это действие нельзя отменить.`"
+      :error="deleteError"
+      :busy="busy"
+      confirm-text="Удалить навсегда"
+      busy-text="Удаляем…"
+      @close="deleting = undefined"
+      @confirm="remove"
+    />
   </div>
 </template>
