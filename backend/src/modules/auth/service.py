@@ -45,11 +45,16 @@ def verify_init_data(raw: str, settings: Settings) -> dict:
             raise ValueError()
         age = time.time() - int(data["auth_date"])
         if age < -30 or age > settings.init_data_ttl_seconds:
-            raise ValueError()
+            raise HTTPException(
+                401,
+                "Данные входа устарели. Закройте мини-приложение и откройте снова",
+            )
         user = json.loads(data["user"])
         if type(user.get("id")) is not int or user["id"] <= 0:
             raise ValueError()
         return user
+    except HTTPException:
+        raise
     except (ValueError, KeyError, TypeError):
         raise HTTPException(401, "Недействительные данные входа") from None
 

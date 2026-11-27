@@ -19,6 +19,7 @@ from aiogram.types import (
 from src.config import get_settings
 from src.integrations.telegram.link_preview import preview_link
 from src.integrations.telegram.preview_media import store_preview_photo
+from src.integrations.telegram.shared_link import extract_shared_details, merge_caption_preview
 
 URL_RE = re.compile(r"https?://[^\s<>()]+", re.IGNORECASE)
 MAX_URL_LENGTH = 2048
@@ -196,6 +197,8 @@ async def main():
                 "Пришли ссылку на товар или страницу — попробую подтянуть данные и открою форму желания."
             )
             return
+        share_text = message.text or message.caption or ""
+        caption = extract_shared_details(share_text)
         try:
             await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
         except Exception:
@@ -204,6 +207,9 @@ async def main():
             preview = await asyncio.to_thread(preview_link, url, settings)
         except Exception:
             preview = {}
+        # Share sheets often embed the product name next to the URL when the site
+        # blocks scraping (or returns a weak OG title). Prefer page data, fill gaps.
+        preview = merge_caption_preview(preview, caption)
         photo_bytes = await _message_photo_bytes(message)
         image_id = None
         if message.from_user and (photo_bytes or preview.get("image_url")):

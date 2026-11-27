@@ -73,5 +73,5 @@ def avatar(
         raise HTTPException(404, "Фото профиля недоступно")
     return FileResponse(
         settings.media_root / media.storage_key, media_type=media.mime_type,
-        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"},
     )

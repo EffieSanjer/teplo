@@ -122,8 +122,10 @@ class Item(Base):
     __tablename__ = "items"
     __table_args__ = (
         CheckConstraint("list_type IN ('wishlist', 'surprise')", name="item_list_type"),
-        CheckConstraint("item_type IN ('idea', 'gift', 'certificate')", name="item_type"),
-        CheckConstraint("price_mode IN ('approximate', 'from')", name="item_price_mode"),
+        CheckConstraint(
+            "item_type IN ('idea', 'gift', 'certificate', 'ticket')", name="item_type"
+        ),
+        CheckConstraint("price_mode IN ('exact', 'approximate', 'from')", name="item_price_mode"),
         CheckConstraint("surprise_visibility IN ('friends', 'private')", name="item_surprise_visibility"),
         CheckConstraint(
             "(list_type = 'wishlist' AND author_id = recipient_id AND community_id IS NULL) OR "
@@ -136,6 +138,9 @@ class Item(Base):
         CheckConstraint("item_type <> 'gift' OR url IS NOT NULL AND length(url) > 0", name="gift_url"),
         CheckConstraint(
             "item_type <> 'certificate' OR url IS NOT NULL AND length(url) > 0", name="certificate_url"
+        ),
+        CheckConstraint(
+            "item_type <> 'ticket' OR url IS NOT NULL AND length(url) > 0", name="ticket_url"
         ),
         CheckConstraint("price IS NULL OR price >= 0 AND currency IS NOT NULL", name="item_price"),
         Index(
@@ -154,7 +159,7 @@ class Item(Base):
     image_id: Mapped[str | None] = mapped_column(ForeignKey("media.id"), index=True)
     price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
     currency: Mapped[str | None] = mapped_column(String(3))
-    price_mode: Mapped[str] = mapped_column(String(16), default="approximate", server_default="approximate")
+    price_mode: Mapped[str] = mapped_column(String(16), default="exact", server_default="exact")
     surprise_visibility: Mapped[str] = mapped_column(String(10), default="friends", server_default="friends")
     most_wanted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     archived_at: Mapped[datetime | None] = mapped_column(DateTime)

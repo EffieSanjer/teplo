@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     telegram_allow_private_login: bool = True
     membership_ttl_seconds: int = 60
     session_ttl_seconds: int = 604800
-    init_data_ttl_seconds: int = 300
+    init_data_ttl_seconds: int = 86400
     media_root: Path = Path("data/media")
     max_upload_bytes: int = 5 * 1024 * 1024
     max_image_pixels: int = 16_000_000

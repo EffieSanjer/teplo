@@ -136,8 +136,14 @@ def same_page(value, base_url):
         return False
 
 
-def structured_product(soup, base_url):
-    """Follow page entities and graph references, not related products or item lists."""
+EVENT_TYPES = (
+    "Event", "MusicEvent", "TheaterEvent", "ScreeningEvent", "ComedyEvent",
+    "SportsEvent", "ExhibitionEvent", "EducationEvent", "Festival", "LiteraryEvent",
+)
+
+
+def _ld_json_nodes(soup, base_url):
+    """Collect JSON-LD nodes and an @id resolver for the page."""
     nodes, primary = [], []
 
     def visit(value, depth=0):
@@ -153,7 +159,7 @@ def structured_product(soup, base_url):
             ):
                 entity = value.get("mainEntity", [])
                 primary.extend(entity if isinstance(entity, list) else [entity])
-            for key in ("@graph", "mainEntity", "image", "offers", "priceSpecification"):
+            for key in ("@graph", "mainEntity", "image", "offers", "priceSpecification", "location", "performer"):
                 if key in value:
                     visit(value[key], depth + 1)
 
@@ -181,6 +187,12 @@ def structured_product(soup, base_url):
                 pass
         return value
 
+    return nodes, primary, resolve
+
+
+def structured_product(soup, base_url):
+    """Follow page entities and graph references, not related products or item lists."""
+    nodes, primary, resolve = _ld_json_nodes(soup, base_url)
     products = []
     for node in nodes:
         node = resolve(node)
@@ -200,6 +212,28 @@ def structured_product(soup, base_url):
     if not selected and len(products) == 1 and not products[0].get("url"):
         selected = products
     return (selected[0] if len(selected) == 1 else {}), bool(products and len(selected) != 1), resolve
+
+
+def structured_event(soup, base_url):
+    """Public event markup from ticket desks (MusicEvent, TheaterEvent, …)."""
+    nodes, primary, resolve = _ld_json_nodes(soup, base_url)
+    events = []
+    for node in nodes:
+        node = resolve(node)
+        if any(schema_type(node.get("@type"), name) for name in EVENT_TYPES) and node not in events:
+            events.append(node)
+    main = [resolve(node) for node in primary]
+    selected = [event for event in events if event in main]
+    if not selected:
+        selected = [event for event in events if same_page(event.get("url"), base_url)]
+    if not selected:
+        selected = [event for event in events if same_page(
+            event.get("mainEntityOfPage", {}).get("@id") if isinstance(event.get("mainEntityOfPage"), dict)
+            else event.get("mainEntityOfPage"), base_url,
+        )]
+    if not selected and len(events) == 1:
+        selected = events
+    return (selected[0] if len(selected) == 1 else {}), resolve
 
 
 def image_values(value, resolve=lambda value: value, depth=0):
@@ -263,6 +297,8 @@ def parse_metadata(html: bytes, base_url: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     tags = meta_tags(soup)
     product, ambiguous, resolve = structured_product(soup, base_url)
+    event, event_resolve = structured_event(soup, base_url)
+    resolve = resolve or event_resolve
     scope, micro_ambiguous = microdata_product(soup, base_url)
     # An ambiguous product collection is not a source of individual product fields.
     if ambiguous:
@@ -288,15 +324,18 @@ def parse_metadata(html: bytes, base_url: str) -> dict:
     main = soup.find("main") or soup
     headings = main.find_all("h1")
     heading = headings[0].get_text(" ", strip=True) if len(headings) == 1 else None
+    # Prefer Event markup from ticket desks: OG titles are often SEO wrappers.
     result = {
-        "title": clean_text(product.get("name")) or prop("name") or tags.get("product:title")
-        or heading or tags.get("og:title") or tags.get("twitter:title")
+        "title": clean_text(event.get("name")) or clean_text(product.get("name")) or prop("name")
+        or tags.get("product:title") or heading or tags.get("og:title") or tags.get("twitter:title")
         or (soup.title.get_text(strip=True) if soup.title else None),
-        "description": clean_text(product.get("description")) or prop("description")
-        or tags.get("og:description") or tags.get("twitter:description") or tags.get("description"),
+        "description": clean_text(event.get("description")) or clean_text(product.get("description"))
+        or prop("description") or tags.get("og:description") or tags.get("twitter:description")
+        or tags.get("description"),
         "price": None, "currency": None,
     }
-    images = image_values(product.get("image"), resolve)
+    images = image_values(event.get("image"), event_resolve)
+    images.extend(image_values(product.get("image"), resolve))
     for tag in properties("image"):
         images.extend(element_images(tag))
         for child in tag.select('[itemprop~="contentUrl"], [itemprop~="url"], img, source'):

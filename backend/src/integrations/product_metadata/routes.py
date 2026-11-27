@@ -11,7 +11,9 @@ from src.config import Settings, get_settings
 from src.infrastructure.database import get_db
 from src.infrastructure.rate_limit import limit
 from src.integrations.product_metadata.network import FetchError, fetch_public
-from src.integrations.product_metadata.afisha import fetch_session, session_api_url
+from src.integrations.product_metadata.afisha import (
+    clean_event_title, fetch_session, is_ticket_page, session_api_url,
+)
 from src.integrations.product_metadata.avito import is_avito, parse_avito
 from src.integrations.product_metadata.marketplaces import (
     marketplace_title, merge_product, prefer_large_image, product_ref, public_product,
@@ -88,6 +90,8 @@ def load_page_draft(page_url: str, settings: Settings, fetch, *, prefer_logo: bo
         )
     if draft.get("title"):
         draft["title"] = marketplace_title(draft["title"], site)
+        if is_ticket_page(catalog_url) or is_ticket_page(final_url) or is_ticket_page(page_url):
+            draft["title"] = clean_event_title(draft["title"]) or draft["title"]
     if failure and draft.get("title"):
         failure = None  # Partial product data is useful even without a downloadable photo.
     return draft, html, final_url, failure

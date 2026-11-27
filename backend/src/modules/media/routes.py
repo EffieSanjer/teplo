@@ -1,7 +1,9 @@
 import threading
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,22 @@ from src.modules.media.service import authorized_media, store_image
 
 router = APIRouter(prefix="/media", tags=["media"])
 url_slots = threading.BoundedSemaphore(3)
+CARD_WIDTHS = {400, 800}
+CACHE_HEADERS = {
+    "Cache-Control": "private, max-age=604800, stale-while-revalidate=86400",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
+def card_variant(source: Path, width: int) -> Path:
+    target = source.with_name(f"{source.stem}_w{width}{source.suffix}")
+    if target.is_file() and target.stat().st_mtime >= source.stat().st_mtime:
+        return target
+    with Image.open(source) as image:
+        frame = image.convert("RGB")
+        frame.thumbnail((width, width))
+        frame.save(target, format="JPEG", quality=78, optimize=True)
+    return target
 
 
 class MediaOut(BaseModel):
@@ -66,6 +84,7 @@ def upload_from_url(
 @router.get("/{media_id}", response_class=FileResponse)
 def download(
     media_id: str,
+    w: int | None = None,
     ctx: Context = Depends(get_context),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -74,8 +93,7 @@ def download(
     path = settings.media_root / media.storage_key
     if not path.is_file():
         missing()
-    return FileResponse(
-        path,
-        media_type=media.mime_type,
-        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
-    )
+    if w in CARD_WIDTHS and not media.is_icon:
+        path = card_variant(path, w)
+        return FileResponse(path, media_type="image/jpeg", headers=CACHE_HEADERS)
+    return FileResponse(path, media_type=media.mime_type, headers=CACHE_HEADERS)

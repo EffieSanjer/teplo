@@ -39,7 +39,11 @@ def test_unattached_private_and_reencoded(client, login_as, friend_id):
     response = client.get(f"{ROOT}/media/{media_id}")
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/jpeg"
-    assert response.headers["cache-control"] == "private, no-store"
+    assert response.headers["cache-control"] == "private, max-age=86400"
+    card = client.get(f"{ROOT}/media/{media_id}?w=400")
+    assert card.status_code == 200
+    assert card.headers["content-type"] == "image/jpeg"
+    assert len(card.content) <= len(response.content)
     other = login_as(friend_id)
     assert other.get(f"{ROOT}/media/{media_id}").status_code == 404
 

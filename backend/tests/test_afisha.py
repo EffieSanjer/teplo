@@ -2,7 +2,12 @@ import json
 
 import pytest
 
-from src.integrations.product_metadata.afisha import fetch_session, session_api_url
+from src.integrations.product_metadata.afisha import (
+    clean_event_title,
+    fetch_session,
+    is_ticket_page,
+    session_api_url,
+)
 from src.integrations.product_metadata.network import FetchError
 
 URL = ('https://widget.afisha.yandex.ru/w/sessions/'
@@ -42,3 +47,30 @@ def test_session_uses_event_photo_not_hallplan_or_seat_prices():
 def test_invalid_session_response():
     with pytest.raises(FetchError):
         fetch_session('endpoint', lambda *args: (b'{}', 'application/json', ''), 10000)
+
+
+def test_session_accepts_afishanew_cdn_posters():
+    photo = 'https://avatars.mds.yandex.net/get-afishanew/1/event/orig'
+    payload = {'status': 'success', 'result': {'session': {
+        'event': {'name': 'Show', 'images': [{'url': photo}]},
+    }}}
+    result = fetch_session('endpoint', lambda *args: (json.dumps(payload).encode(), 'application/json', ''), 10000)
+    assert result['image_url'] == photo
+
+
+@pytest.mark.parametrize('url, expected', [
+    ('https://afisha.yandex.ru/moscow/concert/show', True),
+    ('https://www.kassir.ru/event/1', True),
+    ('https://www.wildberries.ru/catalog/1', False),
+    ('https://afisha.yandex.ru.evil.test/show', False),
+])
+def test_ticket_page_hosts(url, expected):
+    assert is_ticket_page(url) is expected
+
+
+def test_clean_event_title_strips_afisha_seo():
+    assert clean_event_title(
+        'Билеты на «Иванушки International» в Live Арена — концерты в Москве на Яндекс Афише'
+    ) == 'Иванушки International'
+    assert clean_event_title('Концерт — Яндекс Афиша') == 'Концерт'
+    assert clean_event_title('Чистый заголовок') == 'Чистый заголовок'

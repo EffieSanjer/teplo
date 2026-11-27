@@ -72,6 +72,16 @@ def test_json_ld_and_fallback():
     assert parse_metadata(b"<html></html>", "https://example.com")["price"] is None
 
 
+def test_json_ld_event_beats_afisha_seo_title():
+    html = """<html><meta property="og:title" content="Билеты на «Шоу» — Яндекс Афиша">
+    <meta property="og:image" content="https://avatars.mds.yandex.net/get-afishanew/1/seo/1200x628">
+    <script type="application/ld+json">{"@type":"MusicEvent","name":"Шоу",
+    "image":"https://avatars.mds.yandex.net/get-afishanew/1/event/orig"}</script></html>""".encode()
+    parsed = parse_metadata(html, "https://afisha.yandex.ru/moscow/concert/show")
+    assert parsed["title"] == "Шоу"
+    assert parsed["image_url"].endswith("/orig")
+
+
 def test_ambiguous_offers_and_malformed_json():
     html = b"""<script type="application/ld+json">not json</script>
     <script type="application/ld+json">{"@type":"Product","name":"Book",

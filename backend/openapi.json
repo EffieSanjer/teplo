@@ -1080,7 +1080,8 @@
             "enum": [
               "idea",
               "gift",
-              "certificate"
+              "certificate",
+              "ticket"
             ],
             "title": "Item Type"
           },
@@ -1164,11 +1165,12 @@
           "price_mode": {
             "type": "string",
             "enum": [
+              "exact",
               "approximate",
               "from"
             ],
             "title": "Price Mode",
-            "default": "approximate"
+            "default": "exact"
           },
           "surprise_visibility": {
             "type": "string",
@@ -1210,7 +1212,8 @@
             "enum": [
               "idea",
               "gift",
-              "certificate"
+              "certificate",
+              "ticket"
             ],
             "title": "Item Type"
           },
@@ -1294,11 +1297,12 @@
           "price_mode": {
             "type": "string",
             "enum": [
+              "exact",
               "approximate",
               "from"
             ],
             "title": "Price Mode",
-            "default": "approximate"
+            "default": "exact"
           },
           "surprise_visibility": {
             "type": "string",
@@ -1348,7 +1352,8 @@
             "enum": [
               "idea",
               "gift",
-              "certificate"
+              "certificate",
+              "ticket"
             ],
             "title": "Item Type"
           },
@@ -1427,6 +1432,7 @@
           "price_mode": {
             "type": "string",
             "enum": [
+              "exact",
               "approximate",
               "from"
             ],

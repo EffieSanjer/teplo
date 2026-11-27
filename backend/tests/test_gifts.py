@@ -60,11 +60,26 @@ def test_crud_archive_and_decimal(client):
         {"title": "a" * 201},
         {"price": "NaN", "currency": "RUB"},
         {"item_type": "certificate", "url": None},
+        {"item_type": "ticket", "url": None},
         {"price_mode": "unknown"},
     ],
 )
 def test_validation(client, changes):
     assert create(client, **changes).status_code == 422
+
+
+def test_ticket_crud(client):
+    result = create(
+        client,
+        item_type="ticket",
+        url="https://theatre.example/show/1",
+        title="Спектакль",
+    )
+    assert result.status_code == 201
+    item = result.json()
+    assert item["item_type"] == "ticket"
+    assert item["url"] == "https://theatre.example/show/1"
+    assert item["title"] == "Спектакль"
 
 
 def test_null_price_and_zero(client):

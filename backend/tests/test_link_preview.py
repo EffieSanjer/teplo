@@ -3,6 +3,10 @@ from decimal import Decimal
 from src.config import get_settings
 from src.integrations.telegram.bot import _extract_url, wish_offer
 from src.integrations.telegram.link_preview import preview_link
+from src.integrations.telegram.shared_link import (
+    extract_shared_details,
+    merge_caption_preview,
+)
 
 
 class _Entity:
@@ -101,3 +105,48 @@ def test_preview_keeps_first_telegram_photo(monkeypatch):
     preview = preview_link("https://t.me/finds/123", get_settings())
     assert preview["title"] == "Finds"
     assert preview["image_url"] == "https://cdn.example/first.jpg"
+
+
+def test_share_caption_title_when_site_blocks_scraping():
+    # Marketplace / brand share sheets put the product name next to the URL.
+    details = extract_shared_details(
+        "Пальто шерстяное\nhttps://12storeez.com/product/coat-123"
+    )
+    assert details == {
+        "url": "https://12storeez.com/product/coat-123",
+        "title": "Пальто шерстяное",
+    }
+    merged = merge_caption_preview({}, details)
+    assert merged["title"] == "Пальто шерстяное"
+
+
+def test_share_caption_fills_gaps_without_overriding_page_title():
+    details = extract_shared_details(
+        "https://www.wildberries.ru/catalog/1126771984/detail.aspx?targetUrl=SN, "
+        "Свеча ароматическая Ta&Ko Home за 2\u00a0850\u00a0₽"
+    )
+    assert details == {
+        "url": "https://www.wildberries.ru/catalog/1126771984/detail.aspx?targetUrl=SN",
+        "title": "Свеча ароматическая Ta&Ko Home",
+        "price": "2850",
+        "currency": "RUB",
+    }
+    merged = merge_caption_preview(
+        {"title": "OG title from page", "price": None, "currency": None},
+        details,
+    )
+    assert merged["title"] == "OG title from page"
+    assert merged["price"] == "2850"
+    assert merged["currency"] == "RUB"
+
+
+def test_share_caption_ignores_generic_share_noise():
+    assert extract_shared_details(
+        "Посмотри находку!\nhttps://example.com/item?price=123\nПоделиться"
+    ) == {"url": "https://example.com/item?price=123"}
+    assert extract_shared_details(
+        "TESLA BATTERIES BLACK+ ААА 24 шт Батарейки щелочные, 1,5V\nhttps://ozon.ru/t/gmg46Bl"
+    ) == {
+        "url": "https://ozon.ru/t/gmg46Bl",
+        "title": "TESLA BATTERIES BLACK+ ААА 24 шт Батарейки щелочные, 1,5V",
+    }

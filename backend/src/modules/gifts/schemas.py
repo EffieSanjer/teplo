@@ -22,14 +22,14 @@ def valid_url(value: str) -> str:
 
 class ItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    item_type: Literal["idea", "gift", "certificate"]
+    item_type: Literal["idea", "gift", "certificate", "ticket"]
     title: str | None = Field(default=None, max_length=200)
     description: str | None = Field(default=None, max_length=500)
     url: str | None = Field(default=None, max_length=2048)
     image_id: str | None = Field(default=None, min_length=36, max_length=36)
     price: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
-    price_mode: Literal["approximate", "from"] = "approximate"
+    price_mode: Literal["exact", "approximate", "from"] = "exact"
     surprise_visibility: Literal["friends", "private"] = "friends"
 
     @field_validator("title", "description", "url", "currency", mode="before")
@@ -52,6 +52,8 @@ class ItemInput(BaseModel):
             raise ValueError("У конкретного подарка должна быть ссылка")
         if self.item_type == "certificate" and not self.url:
             raise ValueError("У магазина для сертификата должна быть ссылка")
+        if self.item_type == "ticket" and not self.url:
+            raise ValueError("У билета должна быть ссылка")
         if self.price is not None and not self.currency:
             raise ValueError("Укажите валюту цены")
         return self
@@ -69,7 +71,7 @@ class ItemOut(BaseModel):
     author_id: str
     author_name: str
     list_type: Literal["wishlist", "surprise"]
-    item_type: Literal["idea", "gift", "certificate"]
+    item_type: Literal["idea", "gift", "certificate", "ticket"]
     title: str | None
     description: str | None
     url: str | None
@@ -77,7 +79,7 @@ class ItemOut(BaseModel):
     image_is_icon: bool = False
     price: Decimal | None
     currency: str | None
-    price_mode: Literal["approximate", "from"]
+    price_mode: Literal["exact", "approximate", "from"]
     archived_at: datetime | None
     created_at: datetime
     updated_at: datetime

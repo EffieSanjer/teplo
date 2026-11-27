@@ -54,9 +54,14 @@ class PinnedConnection(http.client.HTTPConnection):
     def __init__(self, host: str, port: int, address: str, secure: bool, timeout: float):
         super().__init__(host, port=port, timeout=timeout)
         self.address, self.secure = address, secure
+        # HTTPConnection defaults to port 80, so Host would become "host:443" for HTTPS
+        # and Yandex Afisha answers with a CAPTCHA. Match HTTPSConnection's default.
+        if secure:
+            self.default_port = http.client.HTTPSConnection.default_port
 
     def connect(self):
         # Numeric address prevents a second DNS lookup and DNS-rebinding TOCTOU.
+        # Hostname dial is used only for verified fake-IP proxy ranges (see fetch_public).
         family = socket.AF_INET6 if ":" in self.address else socket.AF_INET
         sock = socket.socket(family, socket.SOCK_STREAM)
         sock.settimeout(self.timeout)
@@ -90,7 +95,15 @@ def fetch_public(url: str, max_bytes: int, timeout: float) -> tuple[bytes, str, 
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise FetchError("Сайт не ответил вовремя")
-            conn = PinnedConnection(host, port, addresses[0], parts.scheme == "https", remaining)
+            # Fake-IP DNS proxies (Clash/Surge) map public hosts into 198.18/15.
+            # Dialing that address directly bypasses the proxy and Yandex/etc answer
+            # with a CAPTCHA; hostname dial keeps SSRF checks (IPs already verified)
+            # while letting the proxy intercept.
+            if addresses and all(ipaddress.ip_address(address) in _FAKE_IP for address in addresses):
+                dial = host
+            else:
+                dial = addresses[0]
+            conn = PinnedConnection(host, port, dial, parts.scheme == "https", remaining)
             try:
                 target = parts.path or "/"
                 if parts.query:

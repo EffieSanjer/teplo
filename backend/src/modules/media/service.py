@@ -30,9 +30,9 @@ def store_image(db: Session, owner_id: str, data: bytes, settings: Settings, *, 
                 background = Image.new("RGB", image.size, "white")
                 background.paste(image, mask=image.getchannel("A"))
                 image = background
-                image.thumbnail((2400, 2400))
+                image.thumbnail((1400, 1400))
                 output = io.BytesIO()
-                image.save(output, format="JPEG", quality=88)
+                image.save(output, format="JPEG", quality=80, optimize=True)
                 clean = output.getvalue()
     except (
         UnidentifiedImageError,
@@ -48,6 +48,20 @@ def store_image(db: Session, owner_id: str, data: bytes, settings: Settings, *, 
     key = f"{new_id()}.jpg"
     path = settings.media_root / key
     path.write_bytes(clean)
+    # Card grid/detail sizes are prepared ahead of the first request so the
+    # gallery does not wait on a synchronous resize under load.
+    if not allow_icon:
+        with Image.open(io.BytesIO(clean)) as frame:
+            rgb = frame.convert("RGB")
+            for width in (400, 800):
+                variant = rgb.copy()
+                variant.thumbnail((width, width))
+                variant.save(
+                    path.with_name(f"{path.stem}_w{width}{path.suffix}"),
+                    format="JPEG",
+                    quality=78,
+                    optimize=True,
+                )
     media = Media(storage_key=key, owner_id=owner_id, mime_type="image/jpeg", size=len(clean), is_icon=allow_icon)
     try:
         db.add(media)
@@ -55,6 +69,8 @@ def store_image(db: Session, owner_id: str, data: bytes, settings: Settings, *, 
         db.refresh(media)
     except Exception:
         path.unlink(missing_ok=True)
+        for width in (400, 800):
+            path.with_name(f"{path.stem}_w{width}{path.suffix}").unlink(missing_ok=True)
         raise
     return media
 
@@ -93,7 +109,10 @@ def cleanup(db: Session, settings: Settings) -> int:
         )
     ).all()
     for media in rows:
-        (settings.media_root / media.storage_key).unlink(missing_ok=True)
+        path = settings.media_root / media.storage_key
+        path.unlink(missing_ok=True)
+        for width in (400, 800):
+            path.with_name(f"{path.stem}_w{width}{path.suffix}").unlink(missing_ok=True)
         db.delete(media)
     db.commit()
     return len(rows)

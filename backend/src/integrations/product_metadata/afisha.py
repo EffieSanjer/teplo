@@ -1,4 +1,4 @@
-"""Public ticket-widget sessions; no account or purchase operations."""
+"""Public ticket-widget sessions and event-title cleanup; no purchase operations."""
 
 import base64
 import json
@@ -6,6 +6,48 @@ import re
 from urllib.parse import parse_qs, quote, unquote, urlencode, urlsplit
 
 from .network import FetchError
+
+_YANDEX_IMAGE_PREFIXES = ("/get-tickets/", "/get-afishanew/", "/get-afisha/")
+_TICKET_HOST_SUFFIXES = (
+    "afisha.yandex.ru", "widget.afisha.yandex.ru", "afisha.ru", "kassir.ru",
+    "ticketland.ru", "live.mts.ru", "mtslive.ru", "ponominalu.ru", "kassy.ru",
+    "redkassa.ru", "concert.ru", "bigbilet.ru", "ticketscloud.ru",
+    "qtickets.events", "russpass.ru", "culture.ru",
+)
+
+
+def is_ticket_page(url: str) -> bool:
+    try:
+        host = (urlsplit(url).hostname or "").lower().removeprefix("www.")
+    except ValueError:
+        return False
+    return any(host == suffix or host.endswith("." + suffix) for suffix in _TICKET_HOST_SUFFIXES)
+
+
+def clean_event_title(title: str | None) -> str | None:
+    """Drop SEO wrappers like `Билеты на «X» … на Яндекс Афише`."""
+    if not title or not isinstance(title, str):
+        return None
+    text = re.sub(r"\s+", " ", title).strip()
+    quoted = re.fullmatch(
+        r"билеты\s+на\s+[«\"](.+?)[»\"](?:\s+в\s+.+?)?\s*[|\-–—].+",
+        text,
+        flags=re.I,
+    )
+    if quoted:
+        text = quoted.group(1).strip()
+    else:
+        plain = re.fullmatch(r"билеты\s+на\s+(.+?)\s*[|\-–—].+", text, flags=re.I)
+        if plain:
+            text = plain.group(1).strip()
+    text = re.sub(
+        r"\s*[|\-–—]\s*(?:концерты|спектакли|события|афиша|яндекс\s*афиш\w*|"
+        r"kassir|ticketland|mts\s*live|ponominalu).*$",
+        "",
+        text,
+        flags=re.I,
+    ).strip(" -–—|,«»\"")
+    return text[:200] if len(text) >= 2 else (title.strip()[:200] or None)
 
 
 def session_api_url(url):
@@ -32,6 +74,15 @@ def session_api_url(url):
             + quote(key, safe="") + "?" + urlencode({"clientKey": clients[0]}))
 
 
+def _public_yandex_image(url: str) -> bool:
+    parts = urlsplit(url)
+    return (
+        parts.scheme == "https" and parts.hostname == "avatars.mds.yandex.net"
+        and not parts.username and not parts.password and parts.port in {None, 443}
+        and parts.path.startswith(_YANDEX_IMAGE_PREFIXES)
+    )
+
+
 def fetch_session(endpoint, fetch, max_bytes):
     body, kind, _ = fetch(endpoint, max_bytes)
     if kind.split(";")[0].strip().lower() != "application/json":
@@ -52,12 +103,7 @@ def fetch_session(endpoint, fetch, max_bytes):
             if not isinstance(image, dict) or image.get("crop"):
                 continue
             url = image.get("url")
-            if not isinstance(url, str):
-                continue
-            parts = urlsplit(url)
-            if (parts.scheme == "https" and parts.hostname == "avatars.mds.yandex.net"
-                    and not parts.username and not parts.password and parts.port in {None, 443}
-                    and parts.path.startswith("/get-tickets/")):
+            if isinstance(url, str) and _public_yandex_image(url):
                 candidates.append(url)
         candidates = sorted(dict.fromkeys(candidates), key=lambda url: not url.endswith("/orig"))[:4]
         if not isinstance(title, str) or not title.strip():
