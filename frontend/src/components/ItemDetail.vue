@@ -601,26 +601,27 @@ onBeforeUnmount(() => {
       </article>
       <AppButton
           variant="glass-icon"
-          class="absolute top-[max(12px,env(safe-area-inset-top))] left-3 z-30"
+          class="wish-viewer-icon absolute top-[max(12px,env(safe-area-inset-top))] left-2 z-30"
           label="Назад"
           @click="emit('close')"
       >
-        <ArrowLeft :size="20"/>
+        <ArrowLeft :size="18"/>
       </AppButton>
       <div
-          class="absolute top-[max(12px,env(safe-area-inset-top))] right-3 z-30 flex items-center gap-2"
+          class="absolute top-[max(12px,env(safe-area-inset-top))] right-2 z-30 flex items-center gap-2"
       >
         <div v-if="item.can_manage && !item.archived_at" ref="rootRef" class="relative inline-flex">
           <AppButton
               type="button"
               variant="glass-icon"
+              class="wish-viewer-icon"
               label="Управление желанием"
               :aria-expanded="isOpen"
               aria-haspopup="menu"
               :disabled="busy"
               @click.stop="toggleMenu"
           >
-            <MoreHorizontal :size="20"/>
+            <MoreHorizontal :size="18"/>
           </AppButton>
 
           <Transition
@@ -743,6 +744,13 @@ onBeforeUnmount(() => {
   color: var(--ink);
   border-color: color-mix(in srgb, var(--ink) 18%, transparent);
   background: color-mix(in srgb, var(--paper) 25%, transparent);
+}
+
+.wish-viewer-icon {
+  filter: drop-shadow(0 3px 10px rgb(12 24 36 / 36%));
+}
+.wish-viewer-icon :deep(svg) {
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 35%));
 }
 
 .wish-info-kind {

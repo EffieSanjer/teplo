@@ -81,8 +81,14 @@ const spinnerSize = computed(() => props.iconSize ?? (props.variant === 'clear' 
   place-items: center;
   border: 0;
   border-radius: 50%;
-  color: #faf7ee;
-  background: radial-gradient(circle at center, rgb(0 0 0 / 15%) 19px, transparent 20px);
+  color: #fff;
+  background:
+    radial-gradient(
+      circle at center,
+      rgb(12 24 36 / 52%) 19px,
+      transparent 20px
+    );
+  filter: drop-shadow(0 2px 8px rgb(12 24 36 / 28%));
   cursor: pointer;
   touch-action: manipulation;
 }

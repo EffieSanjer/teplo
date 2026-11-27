@@ -9,7 +9,7 @@ import { certificateTitle } from '../shared/certificateTitle';
 import { certificateIcon } from '../shared/certificateStores';
 import { linkBookmark } from '../shared/linkBookmark';
 import { ticketService } from '../shared/ticketServices';
-import { AppButton, Avatar } from './ui';
+import { AppButton } from './ui';
 
 const props = defineProps<{ item: Item; index: number }>();
 const emit = defineEmits<{ open: [item: Item, origin: CardOrigin] }>();
@@ -197,7 +197,7 @@ function photoLoaded(event: Event) {
       v-else-if="ticketCard"
       variant="custom"
       class="card-open ticket-face"
-      :class="{ 'ticket-with-photo': hasPhoto }"
+      :class="{ 'ticket-with-photo': hasPhoto, 'ticket-without-photo': !hasPhoto }"
       :label="`Открыть: ${ticketTitle || 'билет'}`"
       @click="open"
     >
@@ -272,15 +272,7 @@ function photoLoaded(event: Event) {
       :label="`Открыть: ${itemTitle(item)}`"
       @click="open"
     >
-      <Avatar
-        v-if="!item.archived_at && item.list_type === 'surprise' && item.surprise_visibility === 'friends'"
-        :name="item.author_name"
-        :user-id="item.author_id"
-        class="wish-author-avatar"
-        :title="item.author_name"
-        lazy
-      />
-      <span v-else-if="!item.archived_at" class="wish-type-icon" :aria-label="item.item_type === 'idea' ? 'Идея' : 'Подарок'">
+      <span v-if="!item.archived_at" class="wish-type-icon" :aria-label="item.item_type === 'idea' ? 'Идея' : 'Подарок'">
         <Lightbulb v-if="item.item_type === 'idea'" :size="13" />
         <Gift v-else :size="13" />
       </span>
@@ -336,8 +328,6 @@ function photoLoaded(event: Event) {
 </template>
 
 <style scoped>
-.wish-author-avatar { position: absolute; top: 12px; left: 12px; z-index: 3; width: 26px; height: 26px; font-size: 10px; }
-.most-wanted-card .wish-author-avatar { top: 14px; left: 14px; }
 .wish-reserved-star {
   position: absolute;
   top: 0;
@@ -348,15 +338,16 @@ function photoLoaded(event: Event) {
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 0 var(--wish-radius) 0 16px;
+  border: 0;
+  border-radius: 0;
   color: #fff;
-  background: #4a7a9e;
+  background: none;
   pointer-events: none;
+  filter: drop-shadow(0 1px 6px rgb(12 24 36 / 35%));
 }
-.wish-reserved-star.with-heart { top: 36px; border-radius: 12px 0 0 12px; }
+.wish-reserved-star.with-heart { top: 34px; }
 .collection-tile {
   --wish-radius: var(--radius-lg);
-  --wanted-gradient: linear-gradient(110deg, #2f6878, #6a9aab 30%, #c4ae65 60%, #4a8a9a 82%, #2f6878);
   position: relative;
   min-width: 0;
   border: 0;
@@ -499,14 +490,20 @@ function photoLoaded(event: Event) {
   --wish-note-flare-color: rgb(120 180 200 / 24%);
   --wish-note-orb-color: rgb(200 150 90 / 20%);
 }
-:root[data-theme='dark'] .collection-tile {
-  --wanted-gradient: linear-gradient(110deg, #1a3a48, #4a8a9a 28%, #a8904a 58%, #3a6a7a 82%, #1a3a48);
+.most-wanted-card .wish-poster.tile-photo {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ember) 42%, rgb(255 255 255 / 55%)),
+    0 1px 2px rgb(26 43 58 / 5%);
 }
-.most-wanted-card:not(.without-photo) .wish-poster { background: var(--wanted-gradient); }
+:root[data-theme='dark'] .most-wanted-card .wish-poster.tile-photo {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ember) 48%, rgb(255 255 255 / 28%)),
+    0 1px 2px rgb(0 0 0 / 25%);
+}
 .most-wanted-card.without-photo .wish-poster {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, #6a9ec4 55%, var(--wish-note-edge)),
-    inset 0 0 0 2px color-mix(in srgb, #c4b07a 45%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--ember) 38%, var(--wish-note-edge)),
+    0 12px 30px rgb(12 24 36 / 12%);
 }
 .card-art {
   position: absolute;
@@ -526,22 +523,6 @@ function photoLoaded(event: Event) {
 .card-art :deep(img.site-icon) {
   object-fit: contain;
   padding: 32px;
-}
-.most-wanted-card .card-art { inset: 4px; }
-.most-wanted-card:not(.without-photo) .wish-poster::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  border-radius: inherit;
-  padding: 4px;
-  background: var(--wanted-gradient);
-  mask:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath fill='white' d='M0 0h34v34H16A16 16 0 0 1 0 18Z'/%3E%3C/svg%3E") top right / 34px 34px no-repeat,
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: add, exclude;
 }
 .tile-content {
   position: absolute;
@@ -613,7 +594,6 @@ function photoLoaded(event: Event) {
   color: var(--board);
   backdrop-filter: blur(8px);
 }
-.most-wanted-card .wish-type-icon { top: 14px; left: 14px; }
 .wish-heart {
   top: 0;
   right: 0;
@@ -622,25 +602,25 @@ function photoLoaded(event: Event) {
   pointer-events: none;
   color: #fff;
   background: none;
-}
-.most-wanted-card:not(.without-photo) .wish-heart {
-  top: 0;
-  right: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 0 var(--wish-radius) 0 16px;
-  background: none;
+  filter: drop-shadow(0 1px 6px rgb(12 24 36 / 35%));
 }
 .wish-status {
   position: absolute;
   z-index: 3;
   max-width: calc(100% - 24px);
   padding: 5px 8px;
-  border-radius: 8px;
-  background: rgb(238 243 248 / 92%);
-  color: var(--board);
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  background: rgb(255 255 255 / 18%);
+  color: #fff;
   font-size: 11px;
   line-height: 1.3;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgb(12 24 36 / 12%);
+}
+.wish-poster.tile-photo .wish-status {
+  border-color: rgb(255 255 255 / 35%);
+  background: rgb(16 28 40 / 48%);
 }
 .wish-archive { top: 46px; left: 12px; display: flex; gap: 4px; align-items: center; }
 .wish-reservation { top: 46px; left: 12px; }
@@ -739,6 +719,35 @@ function photoLoaded(event: Event) {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
+.ticket-without-photo {
+  min-height: 188px;
+  border: 0;
+  isolation: isolate;
+  color: var(--wish-note-ink, #f7fbfc);
+  background:
+    radial-gradient(ellipse 80% 55% at var(--wish-note-flare, 88% 16%), var(--wish-note-flare-color, rgb(255 236 190 / 70%)), transparent 55%),
+    radial-gradient(ellipse 70% 60% at var(--wish-note-spot, 12% 8%), var(--wish-note-glow, rgb(210 245 250 / 78%)), transparent 60%),
+    radial-gradient(ellipse 50% 40% at var(--wish-note-orb, 70% 85%), var(--wish-note-orb-color, rgb(120 190 170 / 42%)), transparent 62%),
+    var(--wish-note-wash, linear-gradient(160deg, #8fd0dc 0%, #4f97a8 38%, #2a6478 72%, #1b4554 100%));
+  box-shadow:
+    inset 0 0 0 1px var(--wish-note-edge, rgb(255 255 255 / 28%)),
+    0 12px 30px rgb(12 24 36 / 12%);
+}
+.ticket-without-photo::before {
+  content: '';
+  position: absolute;
+  inset: -20% -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      var(--wish-note-shear, 118deg),
+      transparent 0%,
+      rgb(255 255 255 / 18%) 42%,
+      transparent 58%
+    );
+  opacity: 0.85;
+}
 .ticket-with-photo {
   aspect-ratio: clamp(0.65, var(--tile-photo-ratio, 0.75), 1);
   min-height: 0;
@@ -782,16 +791,28 @@ function photoLoaded(event: Event) {
   font: 500 16px / 1.3 var(--font-editorial);
   letter-spacing: -0.02em;
 }
+.ticket-without-photo .ticket-face-title {
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 500;
+  text-shadow: 0 1px 12px rgb(12 24 36 / 28%);
+}
 .ticket-meta {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.3;
 }
-.ticket-with-photo .ticket-meta {
+.ticket-with-photo .ticket-meta,
+.ticket-without-photo .ticket-meta {
   color: rgb(244 247 250 / 78%);
 }
 .ticket-face .wish-type-icon {
   z-index: 3;
+}
+.ticket-without-photo .wish-type-icon {
+  background: rgb(255 255 255 / 18%);
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 28%);
 }
 .ticket-with-photo .wish-type-icon {
   background: rgb(16 28 40 / 72%);
@@ -805,7 +826,8 @@ function photoLoaded(event: Event) {
   background: none;
   color: var(--muted);
 }
-.ticket-with-photo .wish-status {
+.ticket-with-photo .wish-status,
+.ticket-without-photo .wish-status {
   color: rgb(244 247 250 / 78%);
 }
 .ticket-accent {
@@ -815,6 +837,10 @@ function photoLoaded(event: Event) {
   bottom: 0;
   width: 4px;
   background: color-mix(in srgb, var(--ticket-accent) 72%, #1a2b3a);
+}
+.ticket-without-photo .ticket-accent {
+  width: 3px;
+  background: rgb(255 255 255 / 42%);
 }
 .ticket-with-photo .ticket-accent {
   width: 3px;

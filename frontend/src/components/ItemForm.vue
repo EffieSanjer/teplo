@@ -542,7 +542,7 @@ async function save() {
           :disabled="saving"
           @click="!saving && emit('close')"
         >
-          <ArrowLeft :size="20" />
+          <ArrowLeft :size="18" />
         </AppButton>
       </header>
       <section
@@ -628,8 +628,8 @@ async function save() {
             @click.stop="togglePhotoUrl()"
           >
             <Transition name="photo-link-icon" mode="out-in">
-              <X v-if="photoUrlOpen" key="close" :size="19" />
-              <Link v-else key="link" :size="19" />
+              <X v-if="photoUrlOpen" key="close" :size="18" />
+              <Link v-else key="link" :size="18" />
             </Transition>
           </AppButton>
           <div class="photo-url-field">
